@@ -36,8 +36,11 @@ to run: hello world
    riscv32-unknown-elf-gcc --version 
 
    #it should be 10.2.0, this is the most suitable one.
-   # I have add this version of toolchain in this directory if the version is different run below command)
-
+   #to inatall this virsion run below commands 
+   
+   wget https://github.com/lowRISC/lowrisc-toolchains/releases/download/20220524-1/lowrisc-toolchain-rv32imcb-20220524-1.tar.xz
+   mkdir -p ./lowrisc-toolchain
+   tar -xvf ~/lowrisc-toolchain-rv32imcb-20220524-1.tar.xz -C ./lowrisc-toolchain --strip-components=1
    export PATH=$(pwd)/lowrisc-toolchain/bin:$PATH
 
 4. run below fussoc command from project root(from /minimal-ibex-soc/)
