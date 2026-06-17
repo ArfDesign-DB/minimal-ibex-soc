@@ -284,6 +284,7 @@ targets:
         verilator_options:
           # Disabling tracing reduces compile times but doesn't have a
           # huge influence on runtime performance.
+          - '-Wno-UNOPTFLAT' # <------------ Add this line, it will support all the Verilator version
           - '--trace'
           - '--trace-fst' # this requires -DVM_TRACE_FMT_FST in CFLAGS below!
           - '--trace-structs'

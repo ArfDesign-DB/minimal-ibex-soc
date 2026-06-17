@@ -1,0 +1,72 @@
+TEST 1:-
+
+
+to run: hello world
+
+1.in ibex-demo-system.core 
+
+    targets:
+  sim:
+    default_tool: verilator
+    filesets:
+      - files_sim_verilator
+    toplevel: top_verilator
+    tools:
+      verilator:
+        mode: cc
+        verilator_options:
+          - '-Wno-UNOPTFLAT' # <------------ Add this line, it will support all the Verilator version 
+          - '--trace'
+          - '--trace-fst' 
+          - '--trace-structs'
+          - '--trace-params'
+
+2. create a virtual environment (from /minimal-ibex)
+   #create command 
+   python3 -m venv myenv
+   #start command 
+   source myenv/bin/activate
+
+2. install all python prequist
+
+   pip3 install --user -r python-requirements.txt
+
+3. check the riscv32_toolchain version:-  
+
+   riscv32-unknown-elf-gcc --version 
+
+   #it should be 10.2.0, this is the most suitable one.
+   # I have add this version of toolchain in this directory if the version is different run below command)
+
+   export PATH=$(pwd)/lowrisc-toolchain/bin:$PATH
+
+4. run below fussoc command from project root(from /minimal-ibex-soc/)
+
+    fusesoc --cores-root=. run --target=sim --tool=verilator --setup --build lowrisc:ibex:demo_system
+
+5. go to sw/c/build(check if build present or not)
+    
+    #if build not present inside sw/c
+    mkdir build    
+    cd build       
+    cmake ..
+    make
+
+    #if build present inside sw/c
+    cd build       
+    rm -rf *
+    cmake ..
+    make
+
+6. go to project root then run below command(from /minimal-ibex-soc/)
+    #without trace
+    ./build/lowrisc_ibex_demo_system_0/sim-verilator/Vtop_verilator --meminit=ram,./sw/c/build/demo/hello_world/demo 
+
+    #then for trace/waveform
+    cd ./build/lowrisc_ibex_demo_system_0/sim-verilator/
+    Vtop_verilator --trace
+    
+##or run with trace in one command##
+
+    #with trace
+    ./build/lowrisc_ibex_demo_system_0/sim-verilator/Vtop_verilator -t --meminit=ram,./sw/c/build/demo/hello_world/demo
