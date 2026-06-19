@@ -6,3 +6,4 @@ target/
 *.log
 *.csv
 lowrisc-toolchain/
+lowrisc-toolchain/
