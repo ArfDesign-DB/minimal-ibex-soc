@@ -1,7 +1,7 @@
 TEST 1:-
 
 
-to run: hello world
+To run: hello world
 
 1.in ibex-demo-system.core 
 
@@ -15,23 +15,29 @@ to run: hello world
       verilator:
         mode: cc
         verilator_options:
-          - '-Wno-UNOPTFLAT' # <------------ Add this line, it will support all the Verilator version 
+          - '-Wno-UNOPTFLAT' # <------------ Add this line 
           - '--trace'
           - '--trace-fst' 
           - '--trace-structs'
           - '--trace-params'
 
 2. create a virtual environment (from /minimal-ibex)
-   #create command 
+
+   #create command
+ 
    python3 -m venv myenv
-   #start command 
+
+   #start command
+ 
    source myenv/bin/activate
 
-2. install all python prequist
+   # run all the below command inside virtual environment
 
-   pip3 install --user -r python-requirements.txt
+3. install all python prequist
 
-3. check the riscv32_toolchain version:-  
+   pip3 install --user -r python-requirements.txt   ## if it doesn't work rerun with '--user' removed
+
+4. check the riscv32_toolchain version and verilator version:-  
 
    riscv32-unknown-elf-gcc --version 
 
@@ -43,11 +49,19 @@ to run: hello world
    tar -xvf ~/lowrisc-toolchain-rv32imcb-20220524-1.tar.xz -C ./lowrisc-toolchain --strip-components=1
    export PATH=$(pwd)/lowrisc-toolchain/bin:$PATH
 
-4. run below fussoc command from project root(from /minimal-ibex-soc/)
+  verilator --version
+
+  #it should be 4.210 best suitable for this build
+  #install the required versions with below command
+
+cd /tmp && curl -sSfL -o verilator-4.210.tar.gz "https://storage.googleapis.com/verilator-builds/verilator-v4.210.tar.gz" && sudo mkdir -p /tools/verilator && sudo tar -C /tools/verilator -xzf verilator-4.210.tar.gz && echo "extracted:" && ls /tools/verilator && echo "---try run---" && /tools/verilator/v4.210/bin/verilator --version 2>&1 | head -5
+
+
+5. run below fussoc command from project root(from /minimal-ibex-soc/)
 
     fusesoc --cores-root=. run --target=sim --tool=verilator --setup --build lowrisc:ibex:demo_system
 
-5. go to sw/c/build(check if build present or not)
+6. go to sw/c/build(check if build present or not)
     
     #if build not present inside sw/c
     mkdir build    
@@ -60,16 +74,33 @@ to run: hello world
     rm -rf *
     cmake ..
     make
+   
+  ## Somtimes it shoes error due to srec_cat not installed which is part of srecord.
+  #check if it installed by running below commands
+   
+  which srec_cat
+  srec_cat --version
 
-6. go to project root then run below command(from /minimal-ibex-soc/)
+  ## if not available then install it again
+   
+  sudo apt update
+  sudo apt install srecord
+  
+  ## then rebuild after [rm -rf *] inside sw/c/build
+
+
+7. go to project root then run below command(from /minimal-ibex-soc/)
     #without trace
-    ./build/lowrisc_ibex_demo_system_0/sim-verilator/Vtop_verilator --meminit=ram,./sw/c/build/demo/hello_world/demo 
+    ./build/lowrisc_ibex_demo_system_0/sim-verilator/Vtop_verilator --meminit=ram,./sw/c/build/demo/hello_world/demo
 
     #then for trace/waveform
     cd ./build/lowrisc_ibex_demo_system_0/sim-verilator/
-    Vtop_verilator --trace
+    ./Vtop_verilator --trace
     
 ##or run with trace in one command##
 
     #with trace
     ./build/lowrisc_ibex_demo_system_0/sim-verilator/Vtop_verilator -t --meminit=ram,./sw/c/build/demo/hello_world/demo
+
+
+
