@@ -1,5 +1,6 @@
 build/
 .venv/
+myenv/
 __pycache__/
 target/
 *.fst
