@@ -102,5 +102,8 @@ cd /tmp && curl -sSfL -o verilator-4.210.tar.gz "https://storage.googleapis.com/
     #with trace
     ./build/lowrisc_ibex_demo_system_0/sim-verilator/Vtop_verilator -t --meminit=ram,./sw/c/build/demo/hello_world/demo
 
+##or run + trace + save the log in one command##
 
+    ./build/lowrisc_ibex_demo_system_0/sim-verilator/Vtop_verilator \ --meminit=ram,./sw/c/build/demo/hello_world/demo \
+> sim.log 2>&1
 
