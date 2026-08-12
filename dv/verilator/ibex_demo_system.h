@@ -4,6 +4,8 @@
 
 #include "verilated_toplevel.h"
 #include "verilator_memutil.h"
+//simulation purpose
+#include "spi_flash_extension.h"
 
 class DemoSystem {
  public:
@@ -16,6 +18,9 @@ class DemoSystem {
   top_verilator _top;
   VerilatorMemUtil _memutil;
   MemArea _ram;
+  
+  //simulation purpose
+  SpiFlashExtension _spi_flash_ext;
 
   virtual int Setup(int argc, char **argv, bool &exit_app);
   virtual void Run();

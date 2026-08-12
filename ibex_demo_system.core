@@ -87,7 +87,14 @@ filesets:
       - dv/verilator/top_verilator.sv: { file_type: systemVerilogSource }
       - dv/verilator/ibex_demo_system.cc: { file_type: cppSource }
       - dv/verilator/ibex_demo_system.h:  { file_type: cppSource, is_include_file: true}
+      
+      - dv/verilator/spi_flash_extension.cc: { file_type: cppSource }
+      
       - dv/verilator/ibex_demo_system_main.cc: { file_type: cppSource }
+      
+      - dv/verilator/spi_flash_extension.h: { file_type: cppSource, is_include_file: true }
+      - dv/verilator/spi_flash_model.h: { file_type: cppSource, is_include_file: true }
+      
       - dv/verilator/demo_system_verilator_lint.vlt:  { file_type: vlt }
 
   files_constraints:

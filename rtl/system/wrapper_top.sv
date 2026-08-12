@@ -88,6 +88,13 @@ module wrapper_top #(
   // -------------------------------------------------------
   
   output logic [PwmWidth-1:0] pwm_o,
+  
+  output logic xip_spi_sck_o,
+  output logic xip_spi_csn_o,
+  output logic xip_spi_mosi_o,
+  input  logic xip_spi_miso_i,
+  
+  
   // -------------------------------------------------------
   // Debug-module device port
   // Decoded from the merged OBI stream before the WB bridge.
@@ -287,7 +294,13 @@ module wrapper_top #(
   logic [DW/8-1:0]  xip_be;
   logic             xip_rvalid;
   logic [DW-1:0]    xip_rdata;
-
+  /*
+  // SPI Flash physical interface
+  logic xip_spi_sck;
+  logic xip_spi_csn;
+  logic xip_spi_mosi;
+  logic xip_spi_miso;
+  */
   logic             uart_req;
   logic             uart_we;
   logic [AW-1:0]    uart_addr;
@@ -344,6 +357,7 @@ module wrapper_top #(
   logic [DW/8-1:0]  pwm_be;
   logic             pwm_rvalid;
   logic [DW-1:0]    pwm_rdata;
+  
   
   
   
@@ -441,7 +455,7 @@ module wrapper_top #(
   // ===========================================================
   boot_rom #(
     .ADDR_WIDTH (BootRomAddrWidth),
-    .INIT_FILE  ("/rtl/system/boot.mem")
+    .INIT_FILE  ("rtl/system/boot.mem")
   ) u_boot_rom (
     .clk_i,
     .addr_i  (bootrom_addr[BootRomAddrWidth+1:2]),
@@ -628,6 +642,35 @@ module wrapper_top #(
   // XIP and SPI-control stubs
   // Acknowledge with zero data so a probe cannot hang the bus.
   // ===========================================================
+  // ===========================================================
+// SPI Flash XIP
+// ===========================================================
+spi_flash_xip #(
+    .AW(24),
+    .DW(DW),
+    .CLK_DIV(4)
+) u_spi_flash_xip (
+    .clk_i          (clk_i),
+    .rst_ni         (rst_ni),
+
+    // XIP Interface
+    .xip_req_i      (xip_req),
+    .xip_we_i       (xip_we),
+    .xip_addr_i     (xip_addr[23:0]),
+    .xip_wdata_i    (xip_wdata),
+    .xip_be_i       (xip_be),
+    .xip_rvalid_o   (xip_rvalid),
+    .xip_rdata_o    (xip_rdata),
+
+    // SPI Flash Interface
+    .spi_sck_o      (xip_spi_sck_o),
+    .spi_csn_o      (xip_spi_csn_o),
+    .spi_mosi_o     (xip_spi_mosi_o),
+    .spi_miso_i     (xip_spi_miso_i)
+);
+  
+  
+  /*
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       xip_rvalid     <= 1'b0;
@@ -639,7 +682,11 @@ module wrapper_top #(
   end
   assign xip_rdata     = '0;
   assign spictrl_rdata = '0;
-
+ */
+ 
+ 
+ 
+ 
   // ===========================================================
   // Unused-signal sinks (silence lint warnings)
   // ===========================================================

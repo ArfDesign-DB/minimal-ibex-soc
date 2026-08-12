@@ -12,9 +12,11 @@
 #include "verilated_toplevel.h"
 #include "verilator_memutil.h"
 #include "verilator_sim_ctrl.h"
+#include "spi_flash_extension.h"
 
 DemoSystem::DemoSystem(const char *ram_hier_path, int ram_size_words)
-    : _ram(ram_hier_path, ram_size_words, 4) {}
+    : _ram(ram_hier_path, ram_size_words, 4),
+      _spi_flash_ext(&_top) {}
 
 int DemoSystem::Main(int argc, char **argv) {
   bool exit_app;
@@ -44,6 +46,8 @@ int DemoSystem::Setup(int argc, char **argv, bool &exit_app) {
   // written into u_sram_model before the simulation clock starts.
   _memutil.RegisterMemoryArea("ram", 0x00102000, &_ram);
   simctrl.RegisterExtension(&_memutil);
+  //simulation purpose
+  simctrl.RegisterExtension(&_spi_flash_ext);
 
   exit_app = false;
   return simctrl.ParseCommandArgs(argc, argv, exit_app);

@@ -3,13 +3,28 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // This is the top level that connects the demo system to the virtual devices.
-module top_verilator (input logic clk_i, rst_ni);
+module top_verilator (
+    input logic clk_i,
+    input logic rst_ni,
+    
+    output logic xip_spi_sck_o,
+    output logic xip_spi_csn_o,
+    output logic xip_spi_mosi_o,
+    input  logic xip_spi_miso_i
+    
+    );
 
   localparam ClockFrequency = 50_000_000;
   localparam BaudRate       = 115_200;
 
   logic uart_sys_rx, uart_sys_tx;
-
+  /*
+  // XIP SPI interface
+  logic xip_spi_sck;
+  logic xip_spi_csn;
+  logic xip_spi_mosi;
+  logic xip_spi_miso;
+ */
   // Instantiating the Ibex Demo System.
   ibex_demo_system #(
     .GpiWidth       ( 8                   ),
@@ -40,7 +55,22 @@ module top_verilator (input logic clk_i, rst_ni);
     .pwm_o     ( ),
     .spi_rx_i  (0),
     .spi_tx_o  ( ),
-    .spi_sck_o ( )
+    .spi_sck_o ( ),
+    
+    /*
+        // XIP SPI interface
+    .xip_spi_sck_o (xip_spi_sck),
+    .xip_spi_csn_o (xip_spi_csn),
+    .xip_spi_mosi_o(xip_spi_mosi),
+    .xip_spi_miso_i(xip_spi_miso)
+    */
+    
+    // XIP SPI interface
+    .xip_spi_sck_o (xip_spi_sck_o),
+    .xip_spi_csn_o (xip_spi_csn_o),
+    .xip_spi_mosi_o(xip_spi_mosi_o),
+    .xip_spi_miso_i(xip_spi_miso_i)
+    
   );
 
   // Virtual UART

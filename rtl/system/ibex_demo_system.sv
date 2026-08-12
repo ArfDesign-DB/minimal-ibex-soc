@@ -47,6 +47,11 @@ module ibex_demo_system #(
   input  logic spi_rx_i,
   output logic spi_tx_o,
   output logic spi_sck_o,
+  
+  output logic xip_spi_sck_o,
+  output logic xip_spi_csn_o,
+  output logic xip_spi_mosi_o,
+  input  logic xip_spi_miso_i,
 
   // JTAG debug
   input  logic tck_i,
@@ -237,6 +242,11 @@ module ibex_demo_system #(
     .spi_tx_o        (spi_tx_o),
     .spi_sck_o       (spi_sck_o),
     .spi_byte_data_o (),
+    
+      .xip_spi_sck_o  (xip_spi_sck_o),
+      .xip_spi_csn_o  (xip_spi_csn_o),
+      .xip_spi_mosi_o (xip_spi_mosi_o),
+      .xip_spi_miso_i (xip_spi_miso_i),
 
     // I2C (not wired to top-level pins; use open-drain GPIO if needed)
     .i2c_scl_i    (1'b0),
