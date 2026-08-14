@@ -86,7 +86,7 @@ module top_verilator (
     input logic rst_ni
 );
 
-  localparam ClockFrequency = 50_000_000;
+  localparam ClockFrequency = 20_000_000;
   localparam BaudRate       = 115_200;
 
   //---------------------------------------------------------

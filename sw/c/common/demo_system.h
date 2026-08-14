@@ -149,7 +149,7 @@ void reset_mcycle(void);
 
 #define NUM_PWM_MODULES 12
 
-#define SYSCLK_FREQ 50000000
+#define SYSCLK_FREQ 20000000
 
 /**
  * Writes character to default UART. Signature matches c stdlib function
