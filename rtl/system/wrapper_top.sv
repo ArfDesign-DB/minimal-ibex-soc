@@ -286,6 +286,7 @@ module wrapper_top #(
   logic             timer_rvalid;
   logic [DW-1:0]    timer_rdata;
   logic             timer_err;
+  /*
   logic             spictrl_req;
   logic             spictrl_we;
   logic [AW-1:0]    spictrl_addr;
@@ -293,6 +294,7 @@ module wrapper_top #(
   logic [DW/8-1:0]  spictrl_be;
   logic             spictrl_rvalid;
   logic [DW-1:0]    spictrl_rdata;
+  */
   logic             i2c_req;
   logic             i2c_we;
   logic [AW-1:0]    i2c_addr;
@@ -371,6 +373,7 @@ module wrapper_top #(
     .timer_be_o     (timer_be),
     .timer_rvalid_i (timer_rvalid),
     .timer_rdata_i  (timer_rdata),
+    /*
     .spictrl_req_o    (spictrl_req),
     .spictrl_we_o     (spictrl_we),
     .spictrl_addr_o   (spictrl_addr),
@@ -378,6 +381,7 @@ module wrapper_top #(
     .spictrl_be_o     (spictrl_be),
     .spictrl_rvalid_i (spictrl_rvalid),
     .spictrl_rdata_i  (spictrl_rdata),
+    */
     .i2c_req_o    (i2c_req),
     .i2c_we_o     (i2c_we),
     .i2c_addr_o   (i2c_addr),
@@ -643,9 +647,9 @@ spi_flash_xip #(
   logic unused_bootrom_sideband;
   logic unused_timer_err;
   logic unused_xip_sideband;
-  logic unused_spictrl_sideband;
+ // logic unused_spictrl_sideband;
   assign unused_bootrom_sideband = ^{bootrom_we, bootrom_wdata, bootrom_be};
   assign unused_timer_err        = timer_err;
   assign unused_xip_sideband     = ^{xip_we, xip_addr, xip_wdata, xip_be};
-  assign unused_spictrl_sideband = ^{spictrl_we, spictrl_addr, spictrl_wdata, spictrl_be};
+ // assign unused_spictrl_sideband = ^{spictrl_we, spictrl_addr, spictrl_wdata, spictrl_be};
 endmodule

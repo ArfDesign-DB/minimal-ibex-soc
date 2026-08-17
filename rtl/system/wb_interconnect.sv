@@ -1,4 +1,3 @@
-// Code your design here
 
 module wb_interconnect #(
 
@@ -161,7 +160,7 @@ module wb_interconnect #(
   // SPI CONTROL Interface
 
   // =========================================================
- 
+ /*
   output logic             spictrl_req_o,
 
   output logic             spictrl_we_o,
@@ -175,7 +174,7 @@ module wb_interconnect #(
   input  logic             spictrl_rvalid_i,
 
   input  logic [DW-1:0]    spictrl_rdata_i,
- 
+ */
   // =========================================================
 
   // I2C Interface
@@ -258,7 +257,7 @@ module wb_interconnect #(
 
     DEV_TIMER   = 4'd5,
 
-    DEV_SPICTRL = 4'd6,
+  //  DEV_SPICTRL = 4'd6,
 
     DEV_I2C     = 4'd7,
 
@@ -300,9 +299,9 @@ module wb_interconnect #(
 
   localparam logic [31:0] TIMER_MASK   = 32'hFFFF_FF00;
  
-  localparam logic [31:0] SPICTRL_BASE = 32'h4000_0300;
+ // localparam logic [31:0] SPICTRL_BASE = 32'h4000_0300;
 
-  localparam logic [31:0] SPICTRL_MASK = 32'hFFFF_FF00;
+ // localparam logic [31:0] SPICTRL_MASK = 32'hFFFF_FF00;
  
   localparam logic [31:0] I2C_BASE     = 32'h4000_0400;
 
@@ -332,7 +331,7 @@ module wb_interconnect #(
 
   logic timer_sel;
 
-  logic spictrl_sel;
+  //logic spictrl_sel;
 
   logic i2c_sel;
 
@@ -382,9 +381,9 @@ module wb_interconnect #(
 
       ((wb_adr_i & TIMER_MASK) == TIMER_BASE);
  
-    spictrl_sel =
+   // spictrl_sel =
 
-      ((wb_adr_i & SPICTRL_MASK) == SPICTRL_BASE);
+   //   ((wb_adr_i & SPICTRL_MASK) == SPICTRL_BASE);
  
     i2c_sel =
 
@@ -446,7 +445,7 @@ module wb_interconnect #(
 
       else if (timer_sel)   device_sel_resp <= DEV_TIMER;
 
-      else if (spictrl_sel) device_sel_resp <= DEV_SPICTRL;
+      //else if (spictrl_sel) device_sel_resp <= DEV_SPICTRL;
 
       else if (i2c_sel)     device_sel_resp <= DEV_I2C;
 
@@ -472,7 +471,7 @@ module wb_interconnect #(
 
   	timer_sel |
 
-  	spictrl_sel |
+  	//spictrl_sel |
 
   	i2c_sel |
 
@@ -557,7 +556,7 @@ module wb_interconnect #(
     timer_wdata_o   = '0;
 
     timer_be_o      = '0;
-
+/*
     spictrl_req_o   = '0;
 
     spictrl_we_o    = '0;
@@ -567,7 +566,7 @@ module wb_interconnect #(
     spictrl_wdata_o = '0;
 
     spictrl_be_o    = '0;
-
+*/
     i2c_req_o       = '0;
 
     i2c_we_o        = '0;
@@ -683,7 +682,7 @@ module wb_interconnect #(
       timer_be_o    = wb_sel_i;
 
     end
- 
+ /*
     if (spictrl_sel) begin
 
       spictrl_req_o   = wb_cyc_i & wb_stb_i;
@@ -697,7 +696,7 @@ module wb_interconnect #(
       spictrl_be_o    = wb_sel_i;
 
     end
- 
+ */
     if (i2c_sel) begin
 
       i2c_req_o   = wb_cyc_i & wb_stb_i;
@@ -812,7 +811,7 @@ module wb_interconnect #(
           wb_dat_o = timer_rdata_i;
 
         end
- 
+ /*
         DEV_SPICTRL: begin
 
           wb_ack_o = spictrl_rvalid_i;
@@ -820,7 +819,7 @@ module wb_interconnect #(
           wb_dat_o = spictrl_rdata_i;
 
         end
- 
+ */
         DEV_I2C: begin
 
           wb_ack_o = i2c_rvalid_i;
