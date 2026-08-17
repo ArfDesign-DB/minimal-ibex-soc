@@ -34,6 +34,9 @@ filesets:
       - rtl/system/pwm.sv
       - rtl/system/pwm_wrapper.sv
       - rtl/system/dffram.sv
+      - rtl/system/boot.mem:
+          file_type: user
+          copyto: rtl/system/boot.mem
 
     file_type: systemVerilogSource
 
