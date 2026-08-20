@@ -13,8 +13,10 @@ int main(int argc, char **argv) {
   // The SRAM is mapped at 0x00102000 in the hardware address space
   // (see RegisterMemoryArea call in ibex_demo_system.cc and link.ld).
   DemoSystem demo_system(
-      "TOP.top_verilator.u_ibex_demo_system.u_wrapper.u_dffram",
+      "TOP.top_verilator.u_ibex_demo_system.u_wrapper.gen_sram_model.u_sram_model",
       2048);  // 2048 words × 4 B = 8 KiB
 
   return demo_system.Main(argc, argv);
 }
+
+

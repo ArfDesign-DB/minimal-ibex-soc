@@ -86,6 +86,7 @@ filesets:
       - lowrisc:dv_dpi_sv:uartdpi:0.1
     files:
       - dv/verilator/top_verilator.sv: { file_type: systemVerilogSource }
+      - dv/xsim/spi_nor_flash_model.sv: { file_type: systemVerilogSource }
       - dv/verilator/ibex_demo_system.cc: { file_type: cppSource }
       - dv/verilator/ibex_demo_system.h:  { file_type: cppSource, is_include_file: true }
       - dv/verilator/ibex_demo_system_main.cc: { file_type: cppSource }
