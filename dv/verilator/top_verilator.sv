@@ -215,7 +215,7 @@ endmodule*/
 
 
 
-module top_verilator (
+/*module top_verilator (
     input logic clk_i,
     input logic rst_ni
 );
@@ -227,8 +227,11 @@ module top_verilator (
   // UART
   //---------------------------------------------------------
 
-  logic uart_sys_rx;
-  logic uart_sys_tx;
+  logic uart1_sys_rx;
+  logic uart1_sys_tx;
+
+  logic uart2_sys_rx;
+  logic uart2_sys_tx;
 
   //---------------------------------------------------------
   // I2C Signals
@@ -257,6 +260,9 @@ module top_verilator (
   logic flash_csn;
   logic flash_mosi;
   logic flash_miso;
+  
+  
+  
 
   //---------------------------------------------------------
   // Ibex Demo System
@@ -356,16 +362,168 @@ module top_verilator (
   // Virtual UART
   //---------------------------------------------------------
 
-  uartdpi #(
+ uartdpi #(
     .BAUD(BaudRate),
     .FREQ(ClockFrequency)
-  ) u_uartdpi (
+) u_uartdpi1 (
     .clk_i,
     .rst_ni,
     .active (1'b1),
-    .tx_o   (uart_sys_rx),
-    .rx_i   (uart_sys_tx)
+    .tx_o   (uart1_sys_rx),
+    .rx_i   (uart1_sys_tx)
+);
+
+uartdpi #(
+    .BAUD(BaudRate),
+    .FREQ(ClockFrequency)
+) u_uartdpi2 (
+    .clk_i,
+    .rst_ni,
+    .active (1'b1),
+    .tx_o   (uart2_sys_rx),
+    .rx_i   (uart2_sys_tx)
+);
+
+endmodule*/
+
+
+module top_verilator (
+    input logic clk_i,
+    input logic rst_ni
+);
+  localparam ClockFrequency = 50_000_000;
+  localparam BaudRate       = 115_200;
+  //---------------------------------------------------------
+  // UART
+  //---------------------------------------------------------
+  logic uart1_sys_rx;
+  logic uart1_sys_tx;
+  logic uart2_sys_rx;
+  logic uart2_sys_tx;
+  //---------------------------------------------------------
+  // I2C Signals
+  //---------------------------------------------------------
+  logic scl_i;
+  logic scl_o;
+  logic scl_oe;
+  logic sda_i;
+  logic sda_o;
+  logic sda_oe;
+  //---------------------------------------------------------
+  // Open Drain I2C Bus
+  //---------------------------------------------------------
+  tri1 scl_bus;
+  tri1 sda_bus;
+  //---------------------------------------------------------
+  // XIP SPI Flash Signals
+  //---------------------------------------------------------
+  logic flash_sck;
+  logic flash_csn;
+  logic flash_mosi;
+  logic flash_miso;
+
+
+
+  //---------------------------------------------------------
+  // Ibex Demo System
+  //---------------------------------------------------------
+  ibex_demo_system #(
+    .GpiWidth       (8),
+    .GpoWidth       (16),
+    .PwmWidth       (12),
+    .ClockFrequency (ClockFrequency),
+    .BaudRate       (BaudRate),
+    .RegFile        (ibex_pkg::RegFileFF)
+  ) u_ibex_demo_system (
+    // Clock / Reset
+    .clk_sys_i (clk_i),
+    .rst_sys_ni(rst_ni),
+    // UART
+    .uart_rx_i  (uart1_sys_rx),
+    .uart_tx_o  (uart1_sys_tx),
+    .uart2_rx_i (uart2_sys_rx),
+    .uart2_tx_o (uart2_sys_tx),
+    // JTAG
+    .trst_ni (1'b1),
+    .tms_i   (1'b0),
+    .tck_i   (1'b0),
+    .td_i    (1'b0),
+    .td_o    (),
+    // GPIO
+    .gp_i      (0),
+    .gp_o      (),
+    // PWM
+    .pwm_o     (),
+    // SPI peripheral
+    .spi_rx_i  (0),
+    .spi_tx_o  (),
+    .spi_sck_o (),
+    // ------------------------------------------------------
+    // XIP SPI flash
+    // ------------------------------------------------------
+    //
+    // These signals are connected to the behavioral SPI NOR
+    // flash model below.
+    //
+    .xip_spi_sck_o  (flash_sck),
+    .xip_spi_csn_o  (flash_csn),
+    .xip_spi_mosi_o (flash_mosi),
+    .xip_spi_miso_i (flash_miso),
+    // I2C
+    .i2c_scl_i    (scl_i),
+    .i2c_scl_o    (scl_o),
+    .i2c_scl_oe_o (scl_oe),
+    .i2c_sda_i    (sda_i),
+    .i2c_sda_o    (sda_o),
+    .i2c_sda_oe_o (sda_oe)
   );
 
+  assign scl_bus = (scl_oe) ? 1'bz : 1'b0;
+  assign sda_bus = (sda_oe) ? 1'bz : 1'b0;
+  // Feed the resolved bus value back into the I2C master.
+  assign scl_i = scl_bus;
+  assign sda_i = sda_bus;
+  //---------------------------------------------------------
+  // I2C Slave BFM
+  //---------------------------------------------------------
+  i2c_slave_bfm u_i2c_slave_bfm (
+    .clk  (clk_i),
+    .rst_n(rst_ni),
+    .scl  (scl_bus),
+    .sda  (sda_bus)
+  );
+  spi_nor_flash_model #(
+    .WINDOW_BYTES (65536),
+    .BASE_OFFSET  (24'h40_0000),
+    .INIT_FILE    ("freertos_demo_flash.vmem")
+  ) u_flash (
+    .sck  (flash_sck),
+    .csn  (flash_csn),
+    .mosi (flash_mosi),
+    .miso (flash_miso)
+  );
+  //---------------------------------------------------------
+  // Virtual UART
+  //---------------------------------------------------------
+ uartdpi #(
+    .BAUD(BaudRate),
+    .FREQ(ClockFrequency)
+) u_uartdpi1 (
+    .clk_i,
+    .rst_ni,
+    .active (1'b1),
+    .tx_o   (uart1_sys_rx),
+    .rx_i   (uart1_sys_tx)
+);
+uartdpi #(
+    .BAUD(BaudRate),
+    .FREQ(ClockFrequency)
+) u_uartdpi2 (
+    .clk_i,
+    .rst_ni,
+    .active (1'b1),
+    .tx_o   (uart2_sys_rx),
+    .rx_i   (uart2_sys_tx)
+);
 endmodule
 

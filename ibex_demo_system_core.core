@@ -48,5 +48,6 @@ targets:
       verilator:
         verilator_options:
           - +incdir+rtl/system
+          - --no-timing
           - -Wno-ASSIGNDLY
           - -Wno-TIMESCALEMOD
