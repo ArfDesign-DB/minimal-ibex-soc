@@ -11848,6 +11848,7 @@ module spi_top (
 	endfunction
 	localparam [RegAddr - 1:0] SpiTxReg = sv2v_cast_33151('h0);
 	localparam [RegAddr - 1:0] SpiStatusReg = sv2v_cast_33151('h4);
+	localparam [RegAddr - 1:0] SpiRxReg = sv2v_cast_33151('h8);
 	wire [RegAddr - 1:0] reg_addr;
 	reg read_status_q;
 	wire read_status_d;
@@ -11874,20 +11875,35 @@ module spi_top (
 	assign tx_fifo_empty = tx_fifo_depth == 0;
 	assign tx_fifo_wvalid = ((device_req_i & (reg_addr == SpiTxReg)) & device_we_i) & device_be_i[0];
 	assign read_status_d = (device_req_i & (reg_addr == SpiStatusReg)) & ~device_we_i;
+	reg read_rx_q;
+	wire read_rx_d;
+	reg [7:0] rx_seq_q;
+	assign read_rx_d = (device_req_i & (reg_addr == SpiRxReg)) & ~device_we_i;
 	always @(posedge clk_i or negedge rst_ni)
-		if (!rst_ni)
+		if (!rst_ni) begin
 			read_status_q <= 0;
-		else
+			read_rx_q <= 0;
+			rx_seq_q <= 1'sb0;
+		end
+		else begin
 			read_status_q <= read_status_d;
+			read_rx_q <= read_rx_d;
+			if (tx_fifo_rready)
+				rx_seq_q <= rx_seq_q + 8'd1;
+		end
 	function automatic [((DataWidth - 3) >= 0 ? DataWidth - 2 : 4 - DataWidth) - 1:0] sv2v_cast_7582B;
 		input reg [((DataWidth - 3) >= 0 ? DataWidth - 2 : 4 - DataWidth) - 1:0] inp;
 		sv2v_cast_7582B = inp;
+	endfunction
+	function automatic [((DataWidth - 17) >= 0 ? DataWidth - 16 : 18 - DataWidth) - 1:0] sv2v_cast_E0699;
+		input reg [((DataWidth - 17) >= 0 ? DataWidth - 16 : 18 - DataWidth) - 1:0] inp;
+		sv2v_cast_E0699 = inp;
 	endfunction
 	function automatic [DataWidth - 1:0] sv2v_cast_8536A;
 		input reg [DataWidth - 1:0] inp;
 		sv2v_cast_8536A = inp;
 	endfunction
-	assign device_rdata_o = (read_status_q ? {sv2v_cast_7582B(1'sb0), tx_fifo_empty, tx_fifo_full} : sv2v_cast_8536A(1'sb0));
+	assign device_rdata_o = (read_status_q ? {sv2v_cast_7582B(1'sb0), tx_fifo_empty, tx_fifo_full} : (read_rx_q ? {sv2v_cast_E0699(1'sb0), rx_seq_q, byte_data_o} : sv2v_cast_8536A(1'sb0)));
 	prim_fifo_sync #(
 		.Width(8),
 		.Pass(1'b0),
@@ -11929,6 +11945,19 @@ module spi_top (
 	assign unused_device_be = device_be_i[3:1];
 	assign unused_device_wdata = device_wdata_i[DataWidth - 1:8];
 endmodule
+
+//(Included during Synthesis)//
+// (* blackbox *)
+ module RAM2048 (
+     input  wire        CLK,
+     input  wire        EN0,
+     input  wire [3:0]  WE0,
+     input  wire [10:0] A0,
+     input  wire [31:0] Di0,
+     output wire [31:0] Do0
+ );
+endmodule
+
 module sram_controller (
 	clk_i,
 	rst_ni,
@@ -11947,10 +11976,10 @@ module sram_controller (
 );
 	parameter signed [31:0] AW = 32;
 	parameter signed [31:0] DW = 32;
-	parameter signed [31:0] WORD_ADDR_WIDTH = 11;
+	parameter signed [31:0] WORD_ADDR_WIDTH = 15;
 	parameter ECC_ENABLE = 0;
 	parameter [31:0] SRAM_BASE = 32'h00102000;
-	parameter signed [31:0] SRAM_SIZE = 32'd8192;
+	parameter signed [31:0] SRAM_SIZE = 32'd131072;
 	input wire clk_i;
 	input wire rst_ni;
 	input wire sram_req_i;
@@ -12630,6 +12659,13 @@ module wb_interconnect (
 	uart_be_o,
 	uart_rvalid_i,
 	uart_rdata_i,
+	uart2_req_o,
+	uart2_we_o,
+	uart2_addr_o,
+	uart2_wdata_o,
+	uart2_be_o,
+	uart2_rvalid_i,
+	uart2_rdata_i,
 	gpio_req_o,
 	gpio_we_o,
 	gpio_addr_o,
@@ -12644,13 +12680,6 @@ module wb_interconnect (
 	timer_be_o,
 	timer_rvalid_i,
 	timer_rdata_i,
-	spictrl_req_o,
-	spictrl_we_o,
-	spictrl_addr_o,
-	spictrl_wdata_o,
-	spictrl_be_o,
-	spictrl_rvalid_i,
-	spictrl_rdata_i,
 	i2c_req_o,
 	i2c_we_o,
 	i2c_addr_o,
@@ -12666,10 +12695,10 @@ module wb_interconnect (
 	spihost_rvalid_i,
 	spihost_rdata_i,
 	pwm_req_o,
-	pwm_addr_o,
 	pwm_we_o,
-	pwm_be_o,
+	pwm_addr_o,
 	pwm_wdata_o,
+	pwm_be_o,
 	pwm_rvalid_i,
 	pwm_rdata_i
 );
@@ -12715,6 +12744,13 @@ module wb_interconnect (
 	output reg [(DW / 8) - 1:0] uart_be_o;
 	input wire uart_rvalid_i;
 	input wire [DW - 1:0] uart_rdata_i;
+	output reg uart2_req_o;
+	output reg uart2_we_o;
+	output reg [AW - 1:0] uart2_addr_o;
+	output reg [DW - 1:0] uart2_wdata_o;
+	output reg [(DW / 8) - 1:0] uart2_be_o;
+	input wire uart2_rvalid_i;
+	input wire [DW - 1:0] uart2_rdata_i;
 	output reg gpio_req_o;
 	output reg gpio_we_o;
 	output reg [AW - 1:0] gpio_addr_o;
@@ -12729,13 +12765,6 @@ module wb_interconnect (
 	output reg [(DW / 8) - 1:0] timer_be_o;
 	input wire timer_rvalid_i;
 	input wire [DW - 1:0] timer_rdata_i;
-	output reg spictrl_req_o;
-	output reg spictrl_we_o;
-	output reg [AW - 1:0] spictrl_addr_o;
-	output reg [DW - 1:0] spictrl_wdata_o;
-	output reg [(DW / 8) - 1:0] spictrl_be_o;
-	input wire spictrl_rvalid_i;
-	input wire [DW - 1:0] spictrl_rdata_i;
 	output reg i2c_req_o;
 	output reg i2c_we_o;
 	output reg [AW - 1:0] i2c_addr_o;
@@ -12751,16 +12780,16 @@ module wb_interconnect (
 	input wire spihost_rvalid_i;
 	input wire [DW - 1:0] spihost_rdata_i;
 	output reg pwm_req_o;
-	output reg [31:0] pwm_addr_o;
 	output reg pwm_we_o;
-	output reg [3:0] pwm_be_o;
-	output reg [31:0] pwm_wdata_o;
+	output reg [AW - 1:0] pwm_addr_o;
+	output reg [DW - 1:0] pwm_wdata_o;
+	output reg [(DW / 8) - 1:0] pwm_be_o;
 	input wire pwm_rvalid_i;
-	input wire [31:0] pwm_rdata_i;
+	input wire [DW - 1:0] pwm_rdata_i;
 	localparam [31:0] BOOTROM_BASE = 32'h00100000;
 	localparam [31:0] BOOTROM_MASK = 32'hfffff000;
 	localparam [31:0] SRAM_BASE = 32'h00102000;
-	localparam [31:0] SRAM_MASK = 32'hffffe000;
+	localparam [31:0] SRAM_SIZE = 32'h00002000;
 	localparam [31:0] XIP_BASE = 32'h20000000;
 	localparam [31:0] XIP_MASK = 32'hf0000000;
 	localparam [31:0] UART_BASE = 32'h40000000;
@@ -12769,21 +12798,19 @@ module wb_interconnect (
 	localparam [31:0] GPIO_MASK = 32'hffffff00;
 	localparam [31:0] TIMER_BASE = 32'h40000200;
 	localparam [31:0] TIMER_MASK = 32'hffffff00;
-	localparam [31:0] SPICTRL_BASE = 32'h40000300;
-	localparam [31:0] SPICTRL_MASK = 32'hffffff00;
 	localparam [31:0] I2C_BASE = 32'h40000400;
 	localparam [31:0] I2C_MASK = 32'hffffff00;
 	localparam [31:0] SPIHOST_BASE = 32'h40000500;
 	localparam [31:0] SPIHOST_MASK = 32'hffffff00;
-	localparam [31:0] PWM_BASE = 32'h40000600;
-	localparam [31:0] PWM_MASK = 32'hffffff00;
+	localparam PWM_BASE = 32'h40000600;
+	localparam UART2_BASE = 32'h40000700;
 	reg bootrom_sel;
 	reg sram_sel;
 	reg xip_sel;
 	reg uart_sel;
+	reg uart2_sel;
 	reg gpio_sel;
 	reg timer_sel;
-	reg spictrl_sel;
 	reg i2c_sel;
 	reg spihost_sel;
 	reg pwm_sel;
@@ -12793,15 +12820,15 @@ module wb_interconnect (
 		if (_sv2v_0)
 			;
 		bootrom_sel = (wb_adr_i & BOOTROM_MASK) == BOOTROM_BASE;
-		sram_sel = (wb_adr_i & SRAM_MASK) == SRAM_BASE;
+		sram_sel = (wb_adr_i >= SRAM_BASE) && (wb_adr_i < (SRAM_BASE + SRAM_SIZE));
 		xip_sel = (wb_adr_i & XIP_MASK) == XIP_BASE;
 		uart_sel = (wb_adr_i & UART_MASK) == UART_BASE;
 		gpio_sel = (wb_adr_i & GPIO_MASK) == GPIO_BASE;
 		timer_sel = (wb_adr_i & TIMER_MASK) == TIMER_BASE;
-		spictrl_sel = (wb_adr_i & SPICTRL_MASK) == SPICTRL_BASE;
 		i2c_sel = (wb_adr_i & I2C_MASK) == I2C_BASE;
 		spihost_sel = (wb_adr_i & SPIHOST_MASK) == SPIHOST_BASE;
-		pwm_sel = (wb_adr_i & PWM_MASK) == PWM_BASE;
+		pwm_sel = (wb_adr_i & 32'hffffff00) == PWM_BASE;
+		uart2_sel = (wb_adr_i & 32'hffffff00) == UART2_BASE;
 	end
 	always @(posedge clk_i or negedge rst_ni)
 		if (!rst_ni) begin
@@ -12821,15 +12848,15 @@ module wb_interconnect (
 				device_sel_resp <= 4'd4;
 			else if (timer_sel)
 				device_sel_resp <= 4'd5;
-			else if (spictrl_sel)
-				device_sel_resp <= 4'd6;
 			else if (i2c_sel)
 				device_sel_resp <= 4'd7;
 			else if (spihost_sel)
 				device_sel_resp <= 4'd8;
 			else if (pwm_sel)
 				device_sel_resp <= 4'd9;
-			decode_err_resp <= (wb_cyc_i & wb_stb_i) & !(((((((((bootrom_sel | sram_sel) | xip_sel) | uart_sel) | gpio_sel) | timer_sel) | spictrl_sel) | i2c_sel) | spihost_sel) | pwm_sel);
+			else if (uart2_sel)
+				device_sel_resp <= 4'd10;
+			decode_err_resp <= (wb_cyc_i & wb_stb_i) & !(((((((((bootrom_sel | sram_sel) | xip_sel) | uart_sel) | gpio_sel) | timer_sel) | i2c_sel) | spihost_sel) | uart2_sel) | pwm_sel);
 		end
 	always @(*) begin
 		if (_sv2v_0)
@@ -12864,11 +12891,6 @@ module wb_interconnect (
 		timer_addr_o = 1'sb0;
 		timer_wdata_o = 1'sb0;
 		timer_be_o = 1'sb0;
-		spictrl_req_o = 1'sb0;
-		spictrl_we_o = 1'sb0;
-		spictrl_addr_o = 1'sb0;
-		spictrl_wdata_o = 1'sb0;
-		spictrl_be_o = 1'sb0;
 		i2c_req_o = 1'sb0;
 		i2c_we_o = 1'sb0;
 		i2c_addr_o = 1'sb0;
@@ -12879,6 +12901,11 @@ module wb_interconnect (
 		spihost_addr_o = 1'sb0;
 		spihost_wdata_o = 1'sb0;
 		spihost_be_o = 1'sb0;
+		uart2_req_o = 1'sb0;
+		uart2_we_o = 1'sb0;
+		uart2_addr_o = 1'sb0;
+		uart2_wdata_o = 1'sb0;
+		uart2_be_o = 1'sb0;
 		pwm_req_o = 1'sb0;
 		pwm_we_o = 1'sb0;
 		pwm_addr_o = 1'sb0;
@@ -12912,6 +12939,13 @@ module wb_interconnect (
 			uart_wdata_o = wb_dat_i;
 			uart_be_o = wb_sel_i;
 		end
+		if (uart2_sel) begin
+			uart2_req_o = wb_cyc_i & wb_stb_i;
+			uart2_we_o = wb_we_i;
+			uart2_addr_o = wb_adr_i;
+			uart2_wdata_o = wb_dat_i;
+			uart2_be_o = wb_sel_i;
+		end
 		if (gpio_sel) begin
 			gpio_req_o = wb_cyc_i & wb_stb_i;
 			gpio_we_o = wb_we_i;
@@ -12925,13 +12959,6 @@ module wb_interconnect (
 			timer_addr_o = wb_adr_i;
 			timer_wdata_o = wb_dat_i;
 			timer_be_o = wb_sel_i;
-		end
-		if (spictrl_sel) begin
-			spictrl_req_o = wb_cyc_i & wb_stb_i;
-			spictrl_we_o = wb_we_i;
-			spictrl_addr_o = wb_adr_i;
-			spictrl_wdata_o = wb_dat_i;
-			spictrl_be_o = wb_sel_i;
 		end
 		if (i2c_sel) begin
 			i2c_req_o = wb_cyc_i & wb_stb_i;
@@ -12982,6 +13009,10 @@ module wb_interconnect (
 					wb_ack_o = uart_rvalid_i;
 					wb_dat_o = uart_rdata_i;
 				end
+				4'd10: begin
+					wb_ack_o = uart2_rvalid_i;
+					wb_dat_o = uart2_rdata_i;
+				end
 				4'd4: begin
 					wb_ack_o = gpio_rvalid_i;
 					wb_dat_o = gpio_rdata_i;
@@ -12989,10 +13020,6 @@ module wb_interconnect (
 				4'd5: begin
 					wb_ack_o = timer_rvalid_i;
 					wb_dat_o = timer_rdata_i;
-				end
-				4'd6: begin
-					wb_ack_o = spictrl_rvalid_i;
-					wb_dat_o = spictrl_rdata_i;
 				end
 				4'd7: begin
 					wb_ack_o = i2c_rvalid_i;
@@ -13148,11 +13175,11 @@ module spi_host (
 					state_q <= 2'd0;
 				end
 				else if (sck_pos) begin
-					current_byte_q <= current_byte_d;
 					if (state_q == 2'd2)
 						recieved_byte_d <= {recieved_byte_q[6:0], spi_rx_i};
 				end
 				else if (sck_neg) begin
+					current_byte_q <= current_byte_d;
 					bit_counter_q <= bit_counter_d;
 					recieved_byte_q <= recieved_byte_d;
 					state_q <= state_d;
@@ -13232,19 +13259,6 @@ module pwm_wrapper (
 			device_rvalid_o <= device_req_i;
 	wire _unused;
 	assign _unused = ^device_be_i ^ ^device_wdata_i;
-endmodule
-
-
-//(Included during Synthesis)
-(* blackbox *)
-module RAM2048 (
-    input  wire        CLK,
-    input  wire        EN0,
-    input  wire [3:0]  WE0,
-    input  wire [10:0] A0,
-    input  wire [31:0] Di0,
-    output wire [31:0] Do0
-);
 endmodule
 
 module obi2wb (
@@ -13722,7 +13736,10 @@ module wrapper_top (
 	obi_rdata_o,
 	uart_rx_i,
 	uart_tx_o,
+	uart2_rx_i,
+	uart2_tx_o,
 	uart_irq_o,
+	uart2_irq_o,
 	gp_i,
 	gp_o,
 	timer_intr_o,
@@ -13738,6 +13755,10 @@ module wrapper_top (
 	i2c_sda_oe_o,
 	i2c_irq_o,
 	pwm_o,
+	xip_spi_sck_o,
+	xip_spi_csn_o,
+	xip_spi_mosi_o,
+	xip_spi_miso_i,
 	dbg_req_o,
 	dbg_we_o,
 	dbg_addr_o,
@@ -13751,9 +13772,14 @@ module wrapper_top (
 	parameter [31:0] SramWordAddrWidth = 11;
 	parameter [31:0] GpiWidth = 8;
 	parameter [31:0] GpoWidth = 16;
+	parameter [31:0] PwmWidth = 12;
 	parameter [31:0] ClockFrequency = 20000000;
 	parameter [31:0] BaudRate = 115200;
-	parameter [31:0] PwmWidth = 12;
+	parameter [31:0] Uart2BaudRate = 115200;
+	parameter SRAMInitFile = "";
+	parameter BootInitFile = "rtl/system/boot.mem";
+	parameter [0:0] UseDffram = 1'b0;
+	parameter [31:0] XipClkDiv = 4;
 	input wire clk_i;
 	input wire rst_ni;
 	input wire obi_instr_req_i;
@@ -13771,7 +13797,10 @@ module wrapper_top (
 	output wire [DW - 1:0] obi_rdata_o;
 	input wire uart_rx_i;
 	output wire uart_tx_o;
+	input wire uart2_rx_i;
+	output wire uart2_tx_o;
 	output wire uart_irq_o;
+	output wire uart2_irq_o;
 	input wire [GpiWidth - 1:0] gp_i;
 	output wire [GpoWidth - 1:0] gp_o;
 	output wire timer_intr_o;
@@ -13787,6 +13816,10 @@ module wrapper_top (
 	output wire i2c_sda_oe_o;
 	output wire i2c_irq_o;
 	output wire [PwmWidth - 1:0] pwm_o;
+	output wire xip_spi_sck_o;
+	output wire xip_spi_csn_o;
+	output wire xip_spi_mosi_o;
+	input wire xip_spi_miso_i;
 	output wire dbg_req_o;
 	output wire dbg_we_o;
 	output wire [AW - 1:0] dbg_addr_o;
@@ -13794,6 +13827,7 @@ module wrapper_top (
 	output wire [(DW / 8) - 1:0] dbg_be_o;
 	input wire [DW - 1:0] dbg_rdata_i;
 	localparam [AW - 1:0] UART_BASE = 32'h40000000;
+	localparam [AW - 1:0] UART2_BASE = 32'h40000700;
 	localparam [AW - 1:0] GPIO_BASE = 32'h40000100;
 	localparam [AW - 1:0] TIMER_BASE = 32'h40000200;
 	localparam [AW - 1:0] I2C_BASE = 32'h40000400;
@@ -13914,9 +13948,16 @@ module wrapper_top (
 	wire [AW - 1:0] xip_addr;
 	wire [DW - 1:0] xip_wdata;
 	wire [(DW / 8) - 1:0] xip_be;
-	reg xip_rvalid;
+	wire xip_rvalid;
 	wire [DW - 1:0] xip_rdata;
 	wire uart_req;
+	wire uart2_req;
+	wire uart2_we;
+	wire [AW - 1:0] uart2_addr;
+	wire [DW - 1:0] uart2_wdata;
+	wire [(DW / 8) - 1:0] uart2_be;
+	wire uart2_rvalid;
+	wire [DW - 1:0] uart2_rdata;
 	wire uart_we;
 	wire [AW - 1:0] uart_addr;
 	wire [DW - 1:0] uart_wdata;
@@ -13938,13 +13979,6 @@ module wrapper_top (
 	wire timer_rvalid;
 	wire [DW - 1:0] timer_rdata;
 	wire timer_err;
-	wire spictrl_req;
-	wire spictrl_we;
-	wire [AW - 1:0] spictrl_addr;
-	wire [DW - 1:0] spictrl_wdata;
-	wire [(DW / 8) - 1:0] spictrl_be;
-	reg spictrl_rvalid;
-	wire [DW - 1:0] spictrl_rdata;
 	wire i2c_req;
 	wire i2c_we;
 	wire [AW - 1:0] i2c_addr;
@@ -14009,6 +14043,13 @@ module wrapper_top (
 		.uart_be_o(uart_be),
 		.uart_rvalid_i(uart_rvalid),
 		.uart_rdata_i(uart_rdata),
+		.uart2_req_o(uart2_req),
+		.uart2_we_o(uart2_we),
+		.uart2_addr_o(uart2_addr),
+		.uart2_wdata_o(uart2_wdata),
+		.uart2_be_o(uart2_be),
+		.uart2_rvalid_i(uart2_rvalid),
+		.uart2_rdata_i(uart2_rdata),
 		.gpio_req_o(gpio_req),
 		.gpio_we_o(gpio_we),
 		.gpio_addr_o(gpio_addr),
@@ -14023,13 +14064,6 @@ module wrapper_top (
 		.timer_be_o(timer_be),
 		.timer_rvalid_i(timer_rvalid),
 		.timer_rdata_i(timer_rdata),
-		.spictrl_req_o(spictrl_req),
-		.spictrl_we_o(spictrl_we),
-		.spictrl_addr_o(spictrl_addr),
-		.spictrl_wdata_o(spictrl_wdata),
-		.spictrl_be_o(spictrl_be),
-		.spictrl_rvalid_i(spictrl_rvalid),
-		.spictrl_rdata_i(spictrl_rdata),
 		.i2c_req_o(i2c_req),
 		.i2c_we_o(i2c_we),
 		.i2c_addr_o(i2c_addr),
@@ -14054,7 +14088,7 @@ module wrapper_top (
 	);
 	boot_rom #(
 		.ADDR_WIDTH(BootRomAddrWidth),
-		.INIT_FILE("rtl/system/boot.mem")
+		.INIT_FILE(BootInitFile)
 	) u_boot_rom(
 		.clk_i(clk_i),
 		.addr_i(bootrom_addr[BootRomAddrWidth + 1:2]),
@@ -14073,7 +14107,8 @@ module wrapper_top (
 	sram_controller #(
 		.AW(AW),
 		.DW(DW),
-		.WORD_ADDR_WIDTH(SramWordAddrWidth)
+		.WORD_ADDR_WIDTH(SramWordAddrWidth),
+		.SRAM_SIZE(4 * (1 << SramWordAddrWidth))
 	) u_sram_controller(
 		.clk_i(clk_i),
 		.rst_ni(rst_ni),
@@ -14090,17 +14125,15 @@ module wrapper_top (
 		.mem_wdata_o(sram_mem_wdata),
 		.mem_rdata_i(sram_mem_rdata)
 	);
-
-RAM2048 #()
-u_ram2048(
-.CLK(clk_i),
-.EN0(sram_mem_en),
-.A0(sram_mem_addr),
-.Di0(sram_mem_we),
-.Do0(sram_mem_wdata),
-.WE0(sram_mem_rdata)
-);
-
+	RAM2048 #(
+	) u_ram2048(
+                 .CLK(clk_i),
+                 .EN0(sram_mem_en),
+                 .A0(sram_mem_addr),
+                 .Di0(sram_mem_we),
+                 .Do0(sram_mem_wdata),
+                 .WE0(sram_mem_rdata)
+	 );
 	uart #(
 		.ClockFrequency(ClockFrequency),
 		.BaudRate(BaudRate)
@@ -14117,6 +14150,23 @@ u_ram2048(
 		.uart_rx_i(uart_rx_i),
 		.uart_irq_o(uart_irq_o),
 		.uart_tx_o(uart_tx_o)
+	);
+	uart #(
+		.ClockFrequency(ClockFrequency),
+		.BaudRate(Uart2BaudRate)
+	) u_uart2(
+		.clk_i(clk_i),
+		.rst_ni(rst_ni),
+		.device_req_i(uart2_req),
+		.device_addr_i(uart2_addr - UART2_BASE),
+		.device_we_i(uart2_we),
+		.device_be_i(uart2_be),
+		.device_wdata_i(uart2_wdata),
+		.device_rvalid_o(uart2_rvalid),
+		.device_rdata_o(uart2_rdata),
+		.uart_rx_i(uart2_rx_i),
+		.uart_irq_o(uart2_irq_o),
+		.uart_tx_o(uart2_tx_o)
 	);
 	gpio #(
 		.GpiWidth(GpiWidth),
@@ -14200,25 +14250,31 @@ u_ram2048(
 		.device_rdata_o(pwm_rdata),
 		.pwm_o(pwm_o)
 	);
-	always @(posedge clk_i or negedge rst_ni)
-		if (!rst_ni) begin
-			xip_rvalid <= 1'b0;
-			spictrl_rvalid <= 1'b0;
-		end
-		else begin
-			xip_rvalid <= xip_req;
-			spictrl_rvalid <= spictrl_req;
-		end
-	assign xip_rdata = 1'sb0;
-	assign spictrl_rdata = 1'sb0;
+	spi_flash_xip #(
+		.AW(24),
+		.DW(DW),
+		.CLK_DIV(XipClkDiv)
+	) u_spi_flash_xip(
+		.clk_i(clk_i),
+		.rst_ni(rst_ni),
+		.xip_req_i(xip_req),
+		.xip_we_i(xip_we),
+		.xip_addr_i(xip_addr[23:0]),
+		.xip_wdata_i(xip_wdata),
+		.xip_be_i(xip_be),
+		.xip_rvalid_o(xip_rvalid),
+		.xip_rdata_o(xip_rdata),
+		.spi_sck_o(xip_spi_sck_o),
+		.spi_csn_o(xip_spi_csn_o),
+		.spi_mosi_o(xip_spi_mosi_o),
+		.spi_miso_i(xip_spi_miso_i)
+	);
 	wire unused_bootrom_sideband;
 	wire unused_timer_err;
 	wire unused_xip_sideband;
-	wire unused_spictrl_sideband;
 	assign unused_bootrom_sideband = ^{bootrom_we, bootrom_wdata, bootrom_be};
 	assign unused_timer_err = timer_err;
 	assign unused_xip_sideband = ^{xip_we, xip_addr, xip_wdata, xip_be};
-	assign unused_spictrl_sideband = ^{spictrl_we, spictrl_addr, spictrl_wdata, spictrl_be};
 endmodule
 module uart (
 	clk_i,
@@ -14808,7 +14864,7 @@ module spi_flash_xip (
 			end
 			case (state_q)
 				3'd0:
-					if (xip_read_req) begin
+					if (xip_read_req && !xip_rvalid_o) begin
 						addr_reg_q <= xip_addr_i;
 						out_shift_q <= READ_CMD;
 						bit_cnt_q <= 6'd7;
@@ -14816,6 +14872,8 @@ module spi_flash_xip (
 						data_shift_q <= 1'sb0;
 						state_q <= 3'd1;
 					end
+					else if ((xip_req_i && xip_we_i) && !xip_rvalid_o)
+						xip_rvalid_o <= 1'b1;
 				3'd1:
 					if (spi_fall) begin
 						if (bit_cnt_q == 0) begin
@@ -14857,7 +14915,7 @@ module spi_flash_xip (
 					if (spi_rise) begin
 						data_shift_q <= {data_shift_q[DW - 3:0], spi_miso_i};
 						if (bit_cnt_q == 0) begin
-							xip_rdata_o <= {data_shift_q, spi_miso_i};
+							xip_rdata_o <= {data_shift_q[6:0], spi_miso_i, data_shift_q[14:7], data_shift_q[22:15], data_shift_q[30:23]};
 							state_q <= 3'd4;
 						end
 						else
@@ -14878,10 +14936,16 @@ module ibex_demo_system (
 	gp_o,
 	pwm_o,
 	uart_rx_i,
+	uart2_rx_i,
 	uart_tx_o,
+	uart2_tx_o,
 	spi_rx_i,
 	spi_tx_o,
 	spi_sck_o,
+	xip_spi_sck_o,
+	xip_spi_csn_o,
+	xip_spi_mosi_o,
+	xip_spi_miso_i,
 	i2c_scl_i,
 	i2c_scl_o,
 	i2c_scl_oe_o,
@@ -14899,18 +14963,28 @@ module ibex_demo_system (
 	parameter signed [31:0] PwmWidth = 12;
 	parameter [31:0] ClockFrequency = 20000000;
 	parameter [31:0] BaudRate = 115200;
+	parameter [31:0] Uart2BaudRate = 115200;
 	parameter integer RegFile = 32'sd1;
 	parameter SRAMInitFile = "";
+	parameter BootInitFile = "rtl/system/boot.mem";
+	parameter [0:0] UseDffram = 1'b0;
+	parameter [31:0] XipClkDiv = 4;
 	input wire clk_sys_i;
 	input wire rst_sys_ni;
 	input wire [GpiWidth - 1:0] gp_i;
 	output wire [GpoWidth - 1:0] gp_o;
 	output wire [PwmWidth - 1:0] pwm_o;
 	input wire uart_rx_i;
+	input wire uart2_rx_i;
 	output wire uart_tx_o;
+	output wire uart2_tx_o;
 	input wire spi_rx_i;
 	output wire spi_tx_o;
 	output wire spi_sck_o;
+	output wire xip_spi_sck_o;
+	output wire xip_spi_csn_o;
+	output wire xip_spi_mosi_o;
+	input wire xip_spi_miso_i;
 	input wire i2c_scl_i;
 	output wire i2c_scl_o;
 	output wire i2c_scl_oe_o;
@@ -14924,6 +14998,7 @@ module ibex_demo_system (
 	output wire td_o;
 	localparam [0:0] DBG = 1;
 	wire uart_irq;
+	wire uart2_irq;
 	wire timer_irq;
 	wire rst_core_n;
 	wire ndmreset_req;
@@ -15004,7 +15079,7 @@ module ibex_demo_system (
 		.irq_software_i(1'b0),
 		.irq_timer_i(timer_irq),
 		.irq_external_i(1'b0),
-		.irq_fast_i({14'b00000000000000, uart_irq}),
+		.irq_fast_i({13'b0000000000000, uart2_irq, uart_irq}),
 		.irq_nm_i(1'b0),
 		.scramble_key_valid_i(sv2v_uu_u_top_ext_scramble_key_valid_i_0),
 		.scramble_key_i(sv2v_uu_u_top_ext_scramble_key_i_0),
@@ -15023,7 +15098,12 @@ module ibex_demo_system (
 		.GpiWidth(GpiWidth),
 		.GpoWidth(GpoWidth),
 		.ClockFrequency(ClockFrequency),
-		.BaudRate(BaudRate)
+		.BaudRate(BaudRate),
+		.Uart2BaudRate(Uart2BaudRate),
+		.SRAMInitFile(SRAMInitFile),
+		.BootInitFile(BootInitFile),
+		.UseDffram(UseDffram),
+		.XipClkDiv(XipClkDiv)
 	) u_wrapper(
 		.clk_i(clk_sys_i),
 		.rst_ni(rst_sys_ni),
@@ -15041,8 +15121,11 @@ module ibex_demo_system (
 		.obi_rvalid_o(data_rvalid),
 		.obi_rdata_o(data_rdata),
 		.uart_rx_i(uart_rx_i),
+		.uart2_rx_i(uart2_rx_i),
 		.uart_tx_o(uart_tx_o),
+		.uart2_tx_o(uart2_tx_o),
 		.uart_irq_o(uart_irq),
+		.uart2_irq_o(uart2_irq),
 		.gp_i(gp_i),
 		.gp_o(gp_o),
 		.timer_intr_o(timer_irq),
@@ -15050,6 +15133,10 @@ module ibex_demo_system (
 		.spi_tx_o(spi_tx_o),
 		.spi_sck_o(spi_sck_o),
 		.spi_byte_data_o(),
+		.xip_spi_sck_o(xip_spi_sck_o),
+		.xip_spi_csn_o(xip_spi_csn_o),
+		.xip_spi_mosi_o(xip_spi_mosi_o),
+		.xip_spi_miso_i(xip_spi_miso_i),
 		.i2c_scl_i(i2c_scl_i),
 		.i2c_scl_o(i2c_scl_o),
 		.i2c_scl_oe_o(i2c_scl_oe_o),
