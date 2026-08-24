@@ -988,6 +988,11 @@ this run, all fixed:
   no MULTIDRIVEN/UNDRIVEN, xvlog clean. Lesson: a hand-edit inside a
   generated netlist gets no tool safety net anywhere - eyeball every
   hand-added instance against the RTL wiring it mirrors, port by port.
+  Postscript (2026-08-24): Shivanee's Equivalence Sanity Check on the
+  merged.v she handed PD FAILS - her file predates this fix, and RTL vs
+  rotated-ports netlist is a textbook equivalence mismatch. Advised
+  re-running against 97e4fba before hunting elsewhere. Her independent
+  Verilator regression is COMPLETE (Ravi checklist item 2 closed).
 - **Pin plan reconciled to a committed IO[0]..IO[37] map** (2026-08-21,
   Ravi's pre-sign-off ask): the old prose summary ("gp_o 12" with the
   spare folded in, 2 status LEDs) summed to 39 pads against 38. The

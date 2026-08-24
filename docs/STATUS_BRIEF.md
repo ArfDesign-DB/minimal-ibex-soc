@@ -26,7 +26,7 @@ all timing constraints met.
 | Bugs found & fixed pre-silicon | **9** — the two newest both came from first physical contact (2026-08-18): a real **SPI mode-0 hold-time bug** in `spi_host.sv` (TX launched on the sampling edge; first physical ST7735 stayed white; sim had masked it because the models matched the RTL's race — fixed, full regression green, **fix must reach the PD netlist**, §6), and a **warm-reset boot crash** (firmware `.bss` clobbered the SRAM+0x80 XIP trampoline the boot ROM jumps to on every reset — fixed: linker reserves the region, startup re-writes it; exposes an ASIC first-boot question, §6) |
 | Hardware validation | **Phase 1 COMPLETE and Phase 2a (LCD) PASSED 2026-08-18** (BRINGUP_TEST_REPORT secs. 8-9): FreeRTOS from QSPI flash, console sweep 8/8 scripted, all-4 RGB, and the ST7735 renders the live ARF status screen — after physical contact exposed and we fixed the SPI mode-0 and warm-reset-trampoline bugs. **Phase 2b (OLED + BME280) 2026-08-20 — OLED PASSED, sensor WIP**: first attempt read `oled=2 bme=2` (I2C bus held low; photo-diagnosed as junctions bunched in the breadboard's edge-rail columns), and after rewiring into proper field rows the SSD1306 runs its own live status screen (ARF logo, uptime/pattern/rgb, activity bar), **visually confirmed on the bench**. The BME280 answers at **no** address (boot bus scan prints `3C` only, re-confirmed after a re-solder) with power, CSB, SDO and continuity all verified at its pins → dead module, **replacement on order**; firmware path unchanged and sim-proven. Wiring diagram, decode table and multimeter procedure: PRODUCTION_PERIPHERALS §8. Same session root-caused a console cosmetic bug (patterns 1-3 shared state; keys looked dead after pattern 3 — fixed + regression-locked in tb_freertos) and Vivado's 2-thread Windows default (all .tcl now use 8). Then: Pmod touch-test (hands), batch-2 parts (Phase 3) |
 | Docs | Consolidated 13 → 9 files; root README is the front door |
-| Open decisions | **2** (below) + one watch-item: vendored Ibex is pinned at `594ea976` (2025-04) and upstream has moved 154 commits — we deliberately do NOT sync RTL pre-tapeout (the FPGA must validate the exact tapeout netlist); the 154 commits were AUDITED 2026-08-18: ~60% DV/formal/CI/docs, ~30% features we do not enable (Zcb/Zcmp, CHERIoT, SecureIbex/PMP/ICache hardening, U-mode counters), and no functional fix in the logic we tape out (closest: a minstret counter fix - unused by our firmware). Recommendation: stay pinned through tapeout; evaluate Zcmp (code density) for chip v2. FreeRTOS kernel synced to latest V11.3.0 (software, sim-verified) |
+| Open items | **2 external sign-offs** (pin plan, batch-2 — see below) + PD closing the merged.v equivalence check; plus one watch-item: vendored Ibex is pinned at `594ea976` (2025-04) and upstream has moved 154 commits — we deliberately do NOT sync RTL pre-tapeout (the FPGA must validate the exact tapeout netlist); the 154 commits were AUDITED 2026-08-18: ~60% DV/formal/CI/docs, ~30% features we do not enable (Zcb/Zcmp, CHERIoT, SecureIbex/PMP/ICache hardening, U-mode counters), and no functional fix in the logic we tape out (closest: a minstret counter fix - unused by our firmware). Recommendation: stay pinned through tapeout; evaluate Zcmp (code density) for chip v2. FreeRTOS kernel synced to latest V11.3.0 (software, sim-verified) |
 
 **Guiding rule adopted:** the ASIC is the product; the FPGA is only its
 pre-silicon validation vehicle. Nothing is built that cannot run on the
@@ -114,6 +114,13 @@ Ravi's reply resolved most of the open items. Where each stands on our side:
    elaborates with 0 errors under Verilator 5.020 and analyzes clean in
    xvlog. The RTL-vs-netlist wiring reference is
    `wrapper_top.sv` `gen_sram_dffram`.
+   *Handoff status (2026-08-24, work-plan thread):* Shivanee delivered
+   merged.v to PD; Yosys parse and Icarus compile pass, but her
+   **Equivalence Sanity Check fails** and is being root-caused. Prime
+   suspect: the delivered file predates the port-rotation fix above —
+   RTL vs merged.v differ exactly in the SRAM wiring, which is what an
+   equivalence check reports. Re-running against `97e4fba` (or
+   re-delivering that file) is the first thing to try.
 2. **ASIC first boot — direct XIP chosen, and now IMPLEMENTED (2026-08-19)**:
    `rtl/system/boot.mem` jumps straight to `0x2040_0000`; no SRAM read at
    boot. Regressed as asked: `tb_xip` boots the real ROM with
@@ -145,8 +152,10 @@ Ravi's reply resolved most of the open items. Where each stands on our side:
    All 11 sims (incl. `tb_soc-dffram`) verified green under Verilator
    5.050 on 2026-08-19 as a cross-check, and the same day the whole flow
    was re-proven end-to-end on a **fresh Ubuntu 24.04** (`deps` →
-   regression **13/13** → lint → FuseSoC lint + sim, Verilator 5.020) —
-   the independent sign-off *run* remains hers.
+   regression **13/13** → lint → FuseSoC lint + sim, Verilator 5.020).
+   **CLOSED 2026-08-24: Shivanee reports her independent Verilator
+   regression complete** (work-plan thread) — every item on Ravi's
+   original sign-off checklist that was ours or hers is now done.
 
 **Still needed from the lead:**
 
