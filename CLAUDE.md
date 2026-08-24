@@ -348,7 +348,7 @@ Silicon additions (all small, doctrine-checked): UART2 @0x4000_0700
 (ESP32 companion = the whole internet story), SPI-host RX register
 (SPI+0x8: {seq,byte}) - the host could only transmit before, GPIO widened
 8/8 -> 16/16 (gp_o[12:8]=CS+camera ctrl, gp_i[15:8]=camera byte bus,
-read via the RAW +4 register, NOT the debounced +8). Pin plan 37/38
+read via the RAW +4 register, NOT the debounced +8). Pin plan 37 used + 1 spare (IO map: ASIC_SPEC §6)
 Caravel pads. External: APS6404 8MB PSRAM (bulk store: frames/clips/
 buffers - the desk-vs-warehouse rule; NOT cpu/stack memory), OV7670-FIFO
 camera (snapshots only), MCP3202+MAX9814 mic, PAM8302+PWM-ch3 speaker.
@@ -974,6 +974,30 @@ this run, all fixed:
   re-run of all six benches instantiating a changed model, all PASS.
   Rule of thumb: a warning your own flow silences is still a build
   stopper in someone else's - lint the way the strictest consumer does.
+- **Rotated blackbox ports in the PD-handoff netlist** (2026-08-21):
+  Shivanee's refreshed `ibex_soc_merged_blackbox_dffram.v` is otherwise
+  right (UART2, SPI RX reg, hold-time fix on `sck_neg`, 8 KiB SRAM,
+  RAM2048 blackbox with per-byte WE0, no ifdef), but the hand-added
+  instance wired `.Di0(sram_mem_we)`, `.Do0(sram_mem_wdata)`,
+  `.WE0(sram_mem_rdata)` - three of six ports rotated. Consequences:
+  the RAM's 32-bit output fought the controller's wdata driver, rdata
+  was undriven, every SRAM read X - dead silicon, and NOTHING in our
+  regression can catch it because tb_soc-dffram tests the RTL, not the
+  netlist. Fixed on the branch (reference wiring: wrapper_top.sv
+  gen_sram_dffram), verified by full elaboration: Verilator 0 errors,
+  no MULTIDRIVEN/UNDRIVEN, xvlog clean. Lesson: a hand-edit inside a
+  generated netlist gets no tool safety net anywhere - eyeball every
+  hand-added instance against the RTL wiring it mirrors, port by port.
+- **Pin plan reconciled to a committed IO[0]..IO[37] map** (2026-08-21,
+  Ravi's pre-sign-off ask): the old prose summary ("gp_o 12" with the
+  spare folded in, 2 status LEDs) summed to 39 pads against 38. The
+  38-row map in ASIC_SPEC section 6 is now the source of truth: 37
+  used + IO[29] spare; boot-shared IO[0..4] carry only glitch-tolerant
+  outputs; IO[5]/[6] match the Caravel dev-board FTDI routing; one
+  status LED bonded (gp_o[4]), not two - the delta that lands the
+  arithmetic, flagged to Ravi. FPGA-only signals (3 green LEDs, 10 of
+  12 PWM channels, SW/BTN) are explicitly not bonded; gp_i[7:0] tied 0
+  and trst_ni tied 1 in the Caravel wrapper.
 
 1. ~~SRAM base address~~ **RESOLVED 2026-08-10: team confirmed
    `0x0010_2000` (the repo's value) is correct**; the spec sheet's printed

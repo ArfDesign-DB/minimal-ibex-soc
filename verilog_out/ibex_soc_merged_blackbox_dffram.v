@@ -14125,15 +14125,18 @@ module wrapper_top (
 		.mem_wdata_o(sram_mem_wdata),
 		.mem_rdata_i(sram_mem_rdata)
 	);
-	RAM2048 #(
-	) u_ram2048(
-                 .CLK(clk_i),
-                 .EN0(sram_mem_en),
-                 .A0(sram_mem_addr),
-                 .Di0(sram_mem_we),
-                 .Do0(sram_mem_wdata),
-                 .WE0(sram_mem_rdata)
-	 );
+	// DFFRAM blackbox (GF180 RAM2048, per-byte WE0). Port map fixed
+	// 2026-08-21: WE0/Di0/Do0 were rotated - the RAM output drove the
+	// controller's wdata net and rdata was left undriven, so every SRAM
+	// read returned X. Matches rtl/system/wrapper_top.sv gen_sram_dffram.
+	RAM2048 u_ram2048(
+		.CLK(clk_i),
+		.EN0(sram_mem_en),
+		.A0(sram_mem_addr),
+		.WE0(sram_mem_we),
+		.Di0(sram_mem_wdata),
+		.Do0(sram_mem_rdata)
+	);
 	uart #(
 		.ClockFrequency(ClockFrequency),
 		.BaudRate(BaudRate)

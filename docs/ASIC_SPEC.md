@@ -174,6 +174,82 @@ The management firmware (`caravel_mgmt_firmware.c`) is part of the tapeout
 deliverables. Our design also exposes a Wishbone *slave* port to the management
 SoC (it can write memory before releasing reset).
 
+### Caravel pad map — IO[0]…IO[37] (SOURCE OF TRUTH for pin-plan sign-off)
+
+The committed map below is the tapeout pad assignment: 37 pads used, 1 spare.
+Clock and reset are **not** user pads — the management SoC supplies the
+user-area clock and releases our reset (see above). `trst_ni` is tied high in
+the Caravel wrapper (no pad). IO[0]–IO[4] are shared with the management
+JTAG/housekeeping-SPI during boot, so by policy they carry only glitch-tolerant
+outputs (an LED flicker, a backlight blink or a garbage FIFO write before
+firmware init is harmless; a chip-select or a UART input there would not be).
+IO[5]/IO[6] match the Caravel dev-board's FTDI routing, so the console works
+on an unmodified board.
+
+| IO | SoC port (bit) | Dir | Function / shared use |
+|---|---|---|---|
+| 0 | `pwm_o[0]` | out | Status RGB PWM (heartbeat) — boot-shared pad |
+| 1 | `gp_o[4]` | out | STATUS_LED — boot-shared pad |
+| 2 | `pwm_o[3]` | out | SPKR PWM → external PAM8302 amp — boot-shared pad |
+| 3 | `gp_o[3]` | out | LCD_BL (ST7735 backlight) — boot-shared pad (hk CSB) |
+| 4 | `gp_o[10]` | out | CAM_WEN (FIFO write enable) — boot-shared pad |
+| 5 | `uart_rx_i` | in | UART1 console RX (dev-board FTDI routing) |
+| 6 | `uart_tx_o` | out | UART1 console TX |
+| 7 | `uart2_rx_i` | in | UART2 RX ← ESP32 TX (dedicated companion link) |
+| 8 | `uart2_tx_o` | out | UART2 TX → ESP32 RX |
+| 9 | `tck_i` | in | JTAG TCK |
+| 10 | `tms_i` | in | JTAG TMS |
+| 11 | `td_i` | in | JTAG TDI |
+| 12 | `td_o` | out | JTAG TDO |
+| 13 | `xip_spi_sck_o` | out | XIP flash SCK |
+| 14 | `xip_spi_csn_o` | out | XIP flash CS_N |
+| 15 | `xip_spi_mosi_o` | out | XIP flash MOSI |
+| 16 | `xip_spi_miso_i` | in | XIP flash MISO |
+| 17 | `spi_sck_o` | out | SPI host SCK — **shared bus**: ST7735 + PSRAM + ADC |
+| 18 | `spi_tx_o` | out | SPI host MOSI (shared, as above) |
+| 19 | `spi_rx_i` | in | SPI host MISO (shared return; select via CS pads 22/25/26) |
+| 20 | `i2c_scl_o/oe/i` | inout | I2C SCL, open-drain (3 ports → 1 pad) — SSD1306 + BME280 |
+| 21 | `i2c_sda_o/oe/i` | inout | I2C SDA, open-drain (3 ports → 1 pad) |
+| 22 | `gp_o[0]` | out | LCD_CS (select for shared SPI bus) |
+| 23 | `gp_o[1]` | out | LCD_RST |
+| 24 | `gp_o[2]` | out | LCD_DC |
+| 25 | `gp_o[8]` | out | PSRAM_CS (select for shared SPI bus) |
+| 26 | `gp_o[9]` | out | ADC_CS (select for shared SPI bus) |
+| 27 | `gp_o[11]` | out | CAM_RRST (FIFO read-pointer reset) |
+| 28 | `gp_o[12]` | out | CAM_RCLK (FIFO read clock) |
+| 29 | — | — | **SPARE** (unassigned; Caravel default pad config) |
+| 30 | `gp_i[8]` | in | CAM_D0 — camera FIFO data bus (upper gp_i byte) |
+| 31 | `gp_i[9]` | in | CAM_D1 |
+| 32 | `gp_i[10]` | in | CAM_D2 |
+| 33 | `gp_i[11]` | in | CAM_D3 |
+| 34 | `gp_i[12]` | in | CAM_D4 |
+| 35 | `gp_i[13]` | in | CAM_D5 |
+| 36 | `gp_i[14]` | in | CAM_D6 |
+| 37 | `gp_i[15]` | in | CAM_D7 |
+
+**Arithmetic** (this replaces every earlier "37/38" summary): UART1 2 +
+UART2 2 + JTAG 4 + XIP-SPI 4 + SPI host 3 + I2C 2 + PWM 2 + LCD control 4 +
+status LED 1 + external CS 2 + camera control 3 + camera data 8 = **37 used,
+1 spare**. The chip selects and camera controls are `gp_o` bits and are
+counted once, here; the camera bus is the upper `gp_i` byte.
+
+**FPGA-only signals intentionally NOT bonded out** (the demo build exposes
+more than the chip needs):
+
+| FPGA signal | RTL bits | Why not on the ASIC |
+|---|---|---|
+| 3 of 4 green LEDs | `gp_o[7:5]` | one status LED (IO[1]) suffices; status also on OLED/LCD/UART |
+| 10 of 12 PWM channels | `pwm_o[11:4]`, `pwm_o[2:1]` | FPGA drives 4 RGB LEDs from all 12 channels; chip bonds ch0 (status) + ch3 (speaker) |
+| Switches + buttons | `gp_i[7:0]` | Arty SW/BTN; tied 0 in the Caravel wrapper |
+| Spare register bits | `gp_o[15:13]` | no pads; readable/writable but unconnected |
+| JTAG TRST_N | `trst_ni` | tied high in the wrapper |
+
+One delta from the previous prose summary, made to land the arithmetic and
+flagged for sign-off: **one** plain status LED is bonded (`gp_o[4]`), not two
+— the old category list ("gp_o 12" with the spare folded in, plus 2 LEDs)
+summed to 39 pads against 38 available. If a second LED is wanted, it costs
+the spare (IO[29]).
+
 ## 7. Alternatives considered (Appendix B — abridged)
 
 - **Cores:** Ibex chosen over PicoRV32 (~5 kGE but no debug module), VexRiscv
@@ -200,7 +276,7 @@ lifecycle, alert handler, entropy) was deliberately removed — ~271 kGE saved.
    `0x4000_0700` (+2 pins, ~1.5 kGE), an RX register on the SPI host
    (SPI+0x8), and GPIO widened to 16/16 - the three small silicon changes
    that let external parts deliver WiFi/internet, camera snapshots, mic and
-   speaker on this chip. Architecture, pin budget (37/38 pads) and honest
+   speaker on this chip. Architecture, pin budget (37 used + 1 spare — the committed IO[0]…IO[37] map in §6 is the source of truth) and honest
    ceilings: [PRODUCTION_PERIPHERALS.md](PRODUCTION_PERIPHERALS.md).
 0. **The ASIC is the product; the FPGA is only its validation vehicle**
    (team direction, 2026-08-10 - "not doing demo in FPGA, this is for
@@ -267,5 +343,5 @@ When the ~300 QFN-64 packages return, the chip needs a **carrier PCB**: chip,
 QSPI flash, PSRAM, ESP32, mic/amp/speaker, camera connector, I2C sensors,
 power, reset, USB-UART bridge. The Arty A7 is the rehearsal — every validated
 FPGA interface becomes a copper trace, which is why the FPGA pin map mirrors
-the chip pin plan (37/38 pads, PRODUCTION_PERIPHERALS.md §1). Deliverable:
+the chip pin plan (37 used + 1 spare — the IO[0]…IO[37] map in §6). Deliverable:
 `hw/carrier-board/` KiCad project; owner TBD (PD's board bench).

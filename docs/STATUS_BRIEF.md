@@ -102,6 +102,18 @@ Ravi's reply resolved most of the open items. Where each stands on our side:
    RTL (this repo's main). The final revalidation pass runs **when PD's
    merged.v / frozen file list exists**, so we bit-build exactly that
    configuration; blocked on receiving it, not on us.
+   *Netlist progress (2026-08-21):* Shivanee's refreshed
+   `verilog_out/ibex_soc_merged_blackbox_dffram.v` now carries the full
+   v1.1 config — UART2, the SPI RX register, the SPI mode-0 hold-time fix
+   (TX on `sck_neg`, verified against our RTL), 8 KiB SRAM
+   (SramWordAddrWidth=11), and the DFFRAM as a `RAM2048` blackbox with
+   per-byte `WE0[3:0]`, no simulator ifdef. Our review caught one blocker
+   in the hand-added blackbox instance: **WE0/Di0/Do0 were rotated** (the
+   RAM's output drove the controller's wdata net; rdata was undriven —
+   every SRAM read X, dead silicon). Fixed on the branch, verified: netlist
+   elaborates with 0 errors under Verilator 5.020 and analyzes clean in
+   xvlog. The RTL-vs-netlist wiring reference is
+   `wrapper_top.sv` `gen_sram_dffram`.
 2. **ASIC first boot — direct XIP chosen, and now IMPLEMENTED (2026-08-19)**:
    `rtl/system/boot.mem` jumps straight to `0x2040_0000`; no SRAM read at
    boot. Regressed as asked: `tb_xip` boots the real ROM with
@@ -138,7 +150,7 @@ Ravi's reply resolved most of the open items. Where each stands on our side:
 
 **Still needed from the lead:**
 
-- **Pin plan sign-off:** 37 of Caravel's 38 user pads used, 1 spare.
+- **Pin plan sign-off:** the committed IO[0]…IO[37] map (ASIC_SPEC §6) is the source of truth Ravi asked for — 37 used, 1 spare (IO[29]); directions, shared/mux use and the not-bonded FPGA-only outputs are explicit. One delta flagged for his sign-off: 1 status LED bonded, not 2 (the old categories summed to 39).
 - **Batch-2 parts approval** (~₹1,800) — unblocks Phase 3 (ESP32/WiFi
   on-board validation, Ravi's own checklist item 5).
 

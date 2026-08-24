@@ -39,12 +39,15 @@ the bus idles), seq counts byte boundaries.
 
 ### Pin budget (Caravel: 38 user pads)
 
-UART1 2 · UART2 2 · JTAG 4 (TRST tied high) · XIP-SPI 4 · SPI host 3 +
-CS×2 in gp_o · I2C 2 · PWM 2 (status RGB + SPKR) · gp_o 12 (4 display ctrl,
-2 status LED, 2 CS, 3 camera ctrl, 1 spare) · gp_i 8 (camera bus) =
-**37 of 38**. One pad spare — flagged for team review at pin-plan freeze.
-(On the Arty, the same signals map to Pmods JB/JC, with the shared SPI
-MISO return on Pmod JA3 — see `pins_artya7.xdc`.)
+UART1 2 · UART2 2 · JTAG 4 (TRST tied high, no pad) · XIP-SPI 4 · SPI host 3
+(CS lines are gp_o bits, counted there) · I2C 2 · PWM 2 (status ch0 + SPKR
+ch3) · LCD control 4 · status LED 1 · external CS 2 · camera control 3 ·
+camera data 8 (upper gp_i byte) = **37 used, 1 spare (IO[29])**. The
+committed IO[0]…IO[37] row-by-row map — directions, shared-bus roles, the
+boot-shared-pad policy, and the FPGA-only signals deliberately not bonded
+(3 of 4 green LEDs, 10 of 12 PWM channels, SW/BTN) — is the sign-off source
+of truth: **ASIC_SPEC.md §6**. (On the Arty, the same signals map to Pmods
+JB/JC, with the shared SPI MISO return on Pmod JA3 — see `pins_artya7.xdc`.)
 
 ## 2. External memory: the PSRAM (the enabler for everything below)
 
