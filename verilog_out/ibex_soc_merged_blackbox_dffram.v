@@ -9402,7 +9402,7 @@ module ibex_top (
 			assign scramble_req_o = scramble_req_q;
 		end
 		else begin : gen_noscramble
-			reg unused_scramble_inputs = (((((((scramble_key_valid_i & |scramble_key_i) & |RndCnstIbexKey) & |scramble_nonce_i) & |RndCnstIbexNonce) & scramble_req_q) & ic_scr_key_req) & scramble_key_valid_d) & scramble_req_d;
+			wire unused_scramble_inputs = (((((((scramble_key_valid_i & |scramble_key_i) & |RndCnstIbexKey) & |scramble_nonce_i) & |RndCnstIbexNonce) & scramble_req_q) & ic_scr_key_req) & scramble_key_valid_d) & scramble_req_d;
 			assign scramble_req_d = 1'b0;
 			wire [1:1] sv2v_tmp_2E9FB;
 			assign sv2v_tmp_2E9FB = 1'b0;
@@ -13770,7 +13770,7 @@ module wrapper_top (
 	parameter [31:0] DW = 32;
 	parameter [31:0] BootRomAddrWidth = 10;
 	parameter [31:0] SramWordAddrWidth = 11;
-	parameter [31:0] GpiWidth = 8;
+	parameter [31:0] GpiWidth = 16;
 	parameter [31:0] GpoWidth = 16;
 	parameter [31:0] PwmWidth = 12;
 	parameter [31:0] ClockFrequency = 20000000;
@@ -14961,7 +14961,7 @@ module ibex_demo_system (
 	td_i,
 	td_o
 );
-	parameter signed [31:0] GpiWidth = 8;
+	parameter signed [31:0] GpiWidth = 16;
 	parameter signed [31:0] GpoWidth = 16;
 	parameter signed [31:0] PwmWidth = 12;
 	parameter [31:0] ClockFrequency = 20000000;
@@ -15058,7 +15058,7 @@ module ibex_demo_system (
 		.rst_ni(rst_core_n),
 		.test_en_i(1'b0),
 		.scan_rst_ni(1'b1),
-		.ram_cfg_i('b0),
+		.ram_cfg_i(10'b0),
 		.hart_id_i(32'b00000000000000000000000000000000),
 		.boot_addr_i(32'h00100000),
 		.instr_req_o(instr_req),

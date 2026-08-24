@@ -186,6 +186,14 @@ firmware init is harmless; a chip-select or a UART input there would not be).
 IO[5]/IO[6] match the Caravel dev-board's FTDI routing, so the console works
 on an unmodified board.
 
+**Parameter defaults = this configuration.** A bare `ibex_demo_system`
+instantiation (no overrides) elaborates exactly this map: `GpiWidth=16`
+(`gp_i[15:8]` = CAM_D below; default was 8 until 2026-08-24 — a bare
+instantiation would have silently dropped the camera bus), `GpoWidth=16`,
+`PwmWidth=12`, 8 KiB SRAM. In the blackbox handoff netlist the `RAM2048`
+instance is unconditional (`UseDffram` is dead there), so PD needs **no
+parameter overrides at all** in the Caravel wrapper.
+
 | IO | SoC port (bit) | Dir | Function / shared use |
 |---|---|---|---|
 | 0 | `pwm_o[0]` | out | Status RGB PWM (heartbeat) — boot-shared pad |

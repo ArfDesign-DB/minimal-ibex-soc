@@ -993,6 +993,23 @@ this run, all fixed:
   rotated-ports netlist is a textbook equivalence mismatch. Advised
   re-running against 97e4fba before hunting elsewhere. Her independent
   Verilator regression is COMPLETE (Ravi checklist item 2 closed).
+- **Icarus rejects the netlist; two more latent handoff bugs** (2026-08-24,
+  Shivanee field report #6): (1) sv2v translates Ibex's lint-pacifier
+  `logic unused_scramble_inputs = &{...signals};` into `reg x = <expr>` -
+  a reg initialiser must be a CONSTANT in Verilog; Verilator and Yosys
+  accept it silently, Icarus errors 7x on netlist line 9405. Fix in a
+  hand-maintained netlist: `wire x = <expr>` (continuous assign, legal,
+  behaviour-identical). Also `.ram_cfg_i('b0)` -> `10'b0` (unsized
+  literal = 32 bits vs 10-bit port). (2) GpiWidth defaulted to 8 while
+  the pad map bonds gp_i[15:8] as CAM_D - a bare `ibex_demo_system`
+  instantiation by PD would silently drop the camera bus. Default now 16
+  in ibex_demo_system.sv, wrapper_top.sv AND the netlist (nothing here
+  used the default - every top/bench passes GpiWidth explicitly, so
+  behaviour-neutral; regression + lint green). Rule: before handoff,
+  elaborate the netlist top BARE and diff every port width against the
+  pad map - the defaults are what the integrator gets. Netlist verified
+  clean in Icarus 13.0 (rc=0; MSYS2: pacman -S mingw-w64-ucrt-x86_64-iverilog),
+  Verilator full elaboration and xvlog. WALKTHROUGH gotchas 38-39.
 - **Pin plan reconciled to a committed IO[0]..IO[37] map** (2026-08-21,
   Ravi's pre-sign-off ask): the old prose summary ("gp_o 12" with the
   spare folded in, 2 status LEDs) summed to 39 pads against 38. The

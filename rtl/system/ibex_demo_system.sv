@@ -48,7 +48,9 @@
 
 module ibex_demo_system #(
 
-  parameter int                 GpiWidth       = 8,
+  // Default is the ASIC configuration: gp_i[15:8] = CAM_D7..0 (pad map,
+  // docs/ASIC_SPEC.md section 6). A bare instantiation must get the camera bus.
+  parameter int                 GpiWidth       = 16,
 
   parameter int                 GpoWidth       = 16,
 

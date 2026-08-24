@@ -36,7 +36,7 @@ module wrapper_top #(
 
   parameter int unsigned SramWordAddrWidth = 11,  // 8 KiB SRAM per ASIC spec (docs/ASIC_SPEC.md §2)
 
-  parameter int unsigned GpiWidth        = 8,
+  parameter int unsigned GpiWidth        = 16,  // ASIC config: gp_i[15:8] = CAM_D (docs/ASIC_SPEC.md section 6)
 
   parameter int unsigned GpoWidth        = 16,
 
