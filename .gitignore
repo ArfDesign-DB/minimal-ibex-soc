@@ -1,6 +1,7 @@
 build/
 .venv/
 myenv/
+test_env/
 __pycache__/
 target/
 *.fst
