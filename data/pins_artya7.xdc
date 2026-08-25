@@ -41,6 +41,10 @@ set_property -dict { PACKAGE_PIN B9    IOSTANDARD LVCMOS33 } [get_ports { BTN[2]
 set_property -dict { PACKAGE_PIN B8    IOSTANDARD LVCMOS33 } [get_ports { BTN[3] }]; #IO_L12P_T1_MRCC_16 Sch=btn[3]
 
 ## Pmod Header JA
+## JA pins 1/2 carry the I2C bus (BME280 / SSD1306 — docs/PRODUCTION_PERIPHERALS.md sec. 8).
+## Open-drain with internal pull-ups; the sensor modules add their own too.
+set_property -dict { PACKAGE_PIN G13   IOSTANDARD LVCMOS33 PULLUP true } [get_ports { I2C_SCL }]; #IO_0_15 Sch=ja[1]
+set_property -dict { PACKAGE_PIN B11   IOSTANDARD LVCMOS33 PULLUP true } [get_ports { I2C_SDA }]; #IO_L4P_T0_15 Sch=ja[2]
 #set_property -dict { PACKAGE_PIN G13   IOSTANDARD LVCMOS33 } [get_ports { ja[0] }]; #IO_0_15 Sch=ja[1]
 #set_property -dict { PACKAGE_PIN B11   IOSTANDARD LVCMOS33 } [get_ports { ja[1] }]; #IO_L4P_T0_15 Sch=ja[2]
 #set_property -dict { PACKAGE_PIN A11   IOSTANDARD LVCMOS33 } [get_ports { ja[2] }]; #IO_L4N_T0_15 Sch=ja[3]
@@ -205,10 +209,12 @@ set_property -dict { PACKAGE_PIN C2    IOSTANDARD LVCMOS33 } [get_ports { IO_RST
 #set_property -dict { PACKAGE_PIN J13   IOSTANDARD LVCMOS33 } [get_ports { eth_txd[2] }]; #IO_L17N_T2_A25_15 Sch=eth_txd[2]
 #set_property -dict { PACKAGE_PIN H17   IOSTANDARD LVCMOS33 } [get_ports { eth_txd[3] }]; #IO_L18P_T2_A24_15 Sch=eth_txd[3]
 
-## Quad SPI Flash
-#set_property -dict { PACKAGE_PIN L13   IOSTANDARD LVCMOS33 } [get_ports { qspi_cs }]; #IO_L6P_T0_FCS_B_14 Sch=qspi_cs
-#set_property -dict { PACKAGE_PIN K17   IOSTANDARD LVCMOS33 } [get_ports { qspi_dq[0] }]; #IO_L1P_T0_D00_MOSI_14 Sch=qspi_dq[0]
-#set_property -dict { PACKAGE_PIN K18   IOSTANDARD LVCMOS33 } [get_ports { qspi_dq[1] }]; #IO_L1N_T0_D01_DIN_14 Sch=qspi_dq[1]
+## Quad SPI Flash — used single-bit by the XIP controller (docs/ASIC_SPEC.md
+## section 4). SCK has NO package pin: it is the dedicated CCLK config pin,
+## driven from logic via STARTUPE2.USRCCLKO in top_artya7.sv.
+set_property -dict { PACKAGE_PIN L13   IOSTANDARD LVCMOS33 } [get_ports { QSPI_CS }]; #IO_L6P_T0_FCS_B_14 Sch=qspi_cs
+set_property -dict { PACKAGE_PIN K17   IOSTANDARD LVCMOS33 } [get_ports { QSPI_DQ0 }]; #IO_L1P_T0_D00_MOSI_14 Sch=qspi_dq[0]
+set_property -dict { PACKAGE_PIN K18   IOSTANDARD LVCMOS33 } [get_ports { QSPI_DQ1 }]; #IO_L1N_T0_D01_DIN_14 Sch=qspi_dq[1]
 #set_property -dict { PACKAGE_PIN L14   IOSTANDARD LVCMOS33 } [get_ports { qspi_dq[2] }]; #IO_L2P_T0_D02_14 Sch=qspi_dq[2]
 #set_property -dict { PACKAGE_PIN M14   IOSTANDARD LVCMOS33 } [get_ports { qspi_dq[3] }]; #IO_L2N_T0_D03_14 Sch=qspi_dq[3]
 
@@ -221,3 +227,37 @@ set_property -dict { PACKAGE_PIN C2    IOSTANDARD LVCMOS33 } [get_ports { IO_RST
 #set_property -dict { PACKAGE_PIN F13   IOSTANDARD LVCMOS33     } [get_ports { isns5v0_p }]; #IO_L5P_T0_AD9P_15 Sch=ad_p[9]
 #set_property -dict { PACKAGE_PIN A16   IOSTANDARD LVCMOS33     } [get_ports { isns0v95_n }]; #IO_L8N_T1_AD10N_15 Sch=ad_n[10]
 #set_property -dict { PACKAGE_PIN A15   IOSTANDARD LVCMOS33     } [get_ports { isns0v95_p }]; #IO_L8P_T1_AD10P_15 Sch=ad_p[10]
+
+## v1.1 production peripherals (docs/PRODUCTION_PERIPHERALS.md)
+## ESP32 companion UART + SPI chip-selects + camera control + speaker: Pmod JC
+set_property -dict { PACKAGE_PIN U12   IOSTANDARD LVCMOS33 } [get_ports { UART2_TX }]; #Sch=jc_p[1]
+set_property -dict { PACKAGE_PIN V12   IOSTANDARD LVCMOS33 } [get_ports { UART2_RX }]; #Sch=jc_n[1]
+set_property -dict { PACKAGE_PIN V10   IOSTANDARD LVCMOS33 } [get_ports { PSRAM_CS }]; #Sch=jc_p[2]
+set_property -dict { PACKAGE_PIN V11   IOSTANDARD LVCMOS33 } [get_ports { ADC_CS }]; #Sch=jc_n[2]
+set_property -dict { PACKAGE_PIN U14   IOSTANDARD LVCMOS33 } [get_ports { CAM_WEN }]; #Sch=jc_p[3]
+set_property -dict { PACKAGE_PIN V14   IOSTANDARD LVCMOS33 } [get_ports { CAM_RRST }]; #Sch=jc_n[3]
+set_property -dict { PACKAGE_PIN T13   IOSTANDARD LVCMOS33 } [get_ports { CAM_RCLK }]; #Sch=jc_p[4]
+set_property -dict { PACKAGE_PIN U13   IOSTANDARD LVCMOS33 } [get_ports { SPKR }]; #Sch=jc_n[4]
+## OV7670-FIFO 8-bit data bus: Pmod JB
+set_property -dict { PACKAGE_PIN E15   IOSTANDARD LVCMOS33 } [get_ports { CAM_D[0] }]; #Sch=jb_p[1]
+set_property -dict { PACKAGE_PIN E16   IOSTANDARD LVCMOS33 } [get_ports { CAM_D[1] }]; #Sch=jb_n[1]
+set_property -dict { PACKAGE_PIN D15   IOSTANDARD LVCMOS33 } [get_ports { CAM_D[2] }]; #Sch=jb_p[2]
+set_property -dict { PACKAGE_PIN C15   IOSTANDARD LVCMOS33 } [get_ports { CAM_D[3] }]; #Sch=jb_n[2]
+set_property -dict { PACKAGE_PIN J17   IOSTANDARD LVCMOS33 } [get_ports { CAM_D[4] }]; #Sch=jb_p[3]
+set_property -dict { PACKAGE_PIN J18   IOSTANDARD LVCMOS33 } [get_ports { CAM_D[5] }]; #Sch=jb_n[3]
+set_property -dict { PACKAGE_PIN K15   IOSTANDARD LVCMOS33 } [get_ports { CAM_D[6] }]; #Sch=jb_p[4]
+set_property -dict { PACKAGE_PIN J15   IOSTANDARD LVCMOS33 } [get_ports { CAM_D[7] }]; #Sch=jb_n[4]
+## SPI host MISO (v1.1): shared return line - PSRAM SO and mic-ADC DOUT both
+## drive it (each tri-states when its CS is high). Pmod JA pin 3.
+set_property -dict { PACKAGE_PIN A11   IOSTANDARD LVCMOS33 } [get_ports { SPI_RX }]; #Sch=ja[3]
+
+## ---------------------------------------------------------------------------
+## Configuration / QSPI boot (needed so program_flash.tcl's SPIx4 MCS is
+## accepted - write_cfgmem errors on the default SPI_BUSWIDTH=1; found by
+## the first on-board Flash-to-Board run, 2026-08-18). Digilent-recommended
+## settings for the Arty A7 S25FL128 flash.
+set_property CFGBVS VCCO [current_design]
+set_property CONFIG_VOLTAGE 3.3 [current_design]
+set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]
+set_property BITSTREAM.CONFIG.CONFIGRATE 33 [current_design]
+set_property BITSTREAM.CONFIG.SPI_FALL_EDGE YES [current_design]

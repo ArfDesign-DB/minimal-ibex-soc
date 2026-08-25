@@ -1,7 +1,28 @@
 build/
+myenv/
 .venv/
 __pycache__/
 target/
 *.fst
 *.log
 *.csv
+
+# Vivado / xsim batch-flow junk
+xsim.dir/
+build/
+*.jou
+*.pb
+*.wdb
+xelab.log
+xvlog.log
+xsim*.log
+vivado*.log
+.Xil/
+clockInfo.txt
+tight_setup_hold_pins.txt
+
+# per-PC tool locations saved by scripts/find_tools.cmd - never commit
+.toolpaths
+
+# Linux twin of .toolpaths (written by ibex_soc.sh deps)
+.toolpaths.sh

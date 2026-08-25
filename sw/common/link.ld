@@ -4,18 +4,37 @@
 
 OUTPUT_ARCH(riscv)
 
+/* Memory map — must match wb_interconnect.sv / sram_controller.sv
+ *
+ *   Boot ROM (read-only, instruction + data):
+ *     0x00100000 – 0x00100FFF   4 KiB  (synthesised, boot.mem content)
+ *     The CPU starts here; word 32 (0x00100080) contains
+ *     'jal x0, +0x2000' which jumps to the SRAM entry point.
+ *
+ *   SRAM (read-write):
+ *     0x00102000 – 0x00121FFF   128 KiB  (BRAM; grown from 8 KiB for the
+ *     RTOS port — docs/RTOS_RESEARCH.md Phase A)
+ *     Application code, data, BSS, and stack live here.
+ *     Entry point = ORIGIN(ram) + 0x80 = 0x00102080.
+ *
+ *   NOTE: The 128 KiB SRAM is split 120 KiB code/data + 8 KiB stack.
+ *         Size is set by SramWordAddrWidth in wrapper_top.sv and
+ *         SRAM_SIZE in wb_interconnect.sv — keep all three in sync.
+ */
+
 MEMORY
 {
-    /* 124 KiB should be enough for anybody... */
-    ram         : ORIGIN = 0x00100000, LENGTH = 0x1E000 /* 124 KiB */
-    stack       : ORIGIN = 0x0011E000, LENGTH = 0x02000 /*   4 KiB */
+    ram         : ORIGIN = 0x00102000, LENGTH = 0x1E000 /* 120 KiB code + data */
+    stack       : ORIGIN = 0x00120000, LENGTH = 0x2000  /*   8 KiB stack       */
 }
 
 /* Stack information variables */
-_min_stack      = 0x1000;   /* 4K - minimum stack space to reserve */
+_min_stack      = 0x2000;   /* 8 KiB minimum stack — matches LENGTH(stack) */
 _stack_len     = LENGTH(stack);
 _stack_start   = ORIGIN(stack) + LENGTH(stack);
 
+/* Entry point: SRAM base + 0x80  (= 0x00102080).
+ * The Boot ROM at 0x00100080 contains 'jal x0, +0x2000' which jumps here. */
 _entry_point = _vectors_start + 0x80;
 ENTRY(_entry_point)
 
