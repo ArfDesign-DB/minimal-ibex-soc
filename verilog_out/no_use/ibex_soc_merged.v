@@ -12641,16 +12641,42 @@ module boot_rom_wrapper (
 		.data_o(rdata_o)
 	);
 endmodule
-//(Included during Synthesis)//
-// (* blackbox *)
- module RAM2048 (
-     input  wire        CLK,
-     input  wire        EN0,
-     input  wire [3:0]  WE0,
-     input  wire [10:0] A0,
-     input  wire [31:0] Di0,
-     output wire [31:0] Do0
- );
+module dffram (
+	CLK,
+	WE,
+	EN,
+	Di,
+	Do,
+	A
+);
+	parameter MemInitFile = "";
+	input wire CLK;
+	input wire [3:0] WE;
+	input wire EN;
+	input wire [31:0] Di;
+	output reg [31:0] Do;
+	input wire [10:0] A;
+	localparam signed [31:0] DEPTH = 2048;
+	localparam signed [31:0] WIDTH = 32;
+	reg [31:0] mem [0:2047];
+	always @(posedge CLK)
+		if (EN) begin
+			Do <= mem[A];
+			if (WE[0])
+				mem[A][7:0] <= Di[7:0];
+			if (WE[1])
+				mem[A][15:8] <= Di[15:8];
+			if (WE[2])
+				mem[A][23:16] <= Di[23:16];
+			if (WE[3])
+				mem[A][31:24] <= Di[31:24];
+		end
+		else
+			Do <= 1'sb0;
+	initial if (MemInitFile != "") begin
+		$display("dffram %m: loading %s", MemInitFile);
+		$readmemh(MemInitFile, mem);
+	end
 endmodule
 module sram_controller (
 	clk_i,
@@ -12703,7 +12729,39 @@ module sram_controller (
 	assign mem_wdata_o = sram_wdata_i;
 	assign sram_rdata_o = mem_rdata_i;
 endmodule
-
+module sram_model (
+	clk_i,
+	req_i,
+	addr_i,
+	we_i,
+	wdata_i,
+	rdata_o
+);
+	parameter [31:0] Width = 32;
+	parameter [31:0] Depth = 2048;
+	parameter MemInitFile = "";
+	input wire clk_i;
+	input wire req_i;
+	input wire [$clog2(Depth) - 1:0] addr_i;
+	input wire [(Width / 8) - 1:0] we_i;
+	input wire [Width - 1:0] wdata_i;
+	output reg [Width - 1:0] rdata_o;
+	reg [Width - 1:0] mem [0:Depth - 1];
+	always @(posedge clk_i)
+		if (req_i) begin
+			begin : sv2v_autoblock_1
+				reg signed [31:0] b;
+				for (b = 0; b < (Width / 8); b = b + 1)
+					if (we_i[b])
+						mem[addr_i][b * 8+:8] <= wdata_i[b * 8+:8];
+			end
+			rdata_o <= mem[addr_i];
+		end
+	initial if (MemInitFile != "") begin
+		$display("sram_model %m: initialising from '%s'", MemInitFile);
+		$readmemh(MemInitFile, mem);
+	end
+endmodule
 module uart (
 	clk_i,
 	rst_ni,
@@ -15091,14 +15149,32 @@ module wrapper_top (
 		.mem_wdata_o(sram_mem_wdata),
 		.mem_rdata_i(sram_mem_rdata)
 	);
-	RAM2048 u_ram2048(
-		.CLK(clk_i),
-		.EN0(sram_mem_en),
-		.A0(sram_mem_addr),
-		.WE0(sram_mem_we),
-		.Di0(sram_mem_wdata),
-		.Do0(sram_mem_rdata)
-	);
+	generate
+		if (UseDffram) begin : gen_sram_dffram
+			dffram #(.MemInitFile(SRAMInitFile)) u_dffram(
+				.CLK(clk_i),
+				.EN(sram_mem_en),
+				.WE(sram_mem_we),
+				.Di(sram_mem_wdata),
+				.Do(sram_mem_rdata),
+				.A(sram_mem_addr)
+			);
+		end
+		else begin : gen_sram_model
+			sram_model #(
+				.Width(DW),
+				.Depth(1 << SramWordAddrWidth),
+				.MemInitFile(SRAMInitFile)
+			) u_sram_model(
+				.clk_i(clk_i),
+				.req_i(sram_mem_en),
+				.addr_i(sram_mem_addr),
+				.we_i(sram_mem_we),
+				.wdata_i(sram_mem_wdata),
+				.rdata_o(sram_mem_rdata)
+			);
+		end
+	endgenerate
 	uart #(
 		.ClockFrequency(ClockFrequency),
 		.BaudRate(BaudRate)

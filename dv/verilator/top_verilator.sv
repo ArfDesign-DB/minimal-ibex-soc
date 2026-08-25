@@ -86,14 +86,18 @@ module top_verilator (
     input logic rst_ni
 );
 
-  localparam ClockFrequency = 50_000_000;
+  localparam ClockFrequency = 20_000_000;
   localparam BaudRate       = 115_200;
 
   //---------------------------------------------------------
   // UART
   //---------------------------------------------------------
 
-  logic uart_sys_rx, uart_sys_tx;
+  //logic uart_sys_rx, uart_sys_tx;
+  logic uart1_sys_rx;
+  logic uart1_sys_tx;
+  logic uart2_sys_rx;
+  logic uart2_sys_tx;
 
   //---------------------------------------------------------
   // I2C Signals
@@ -113,7 +117,10 @@ module top_verilator (
 
   tri1 scl_bus;
   tri1 sda_bus;
-
+logic flash_sck;
+  logic flash_csn;
+  logic flash_mosi;
+  logic flash_miso;
   //---------------------------------------------------------
   // Ibex Demo System
   //---------------------------------------------------------
@@ -134,7 +141,8 @@ module top_verilator (
     // UART
     .uart_rx_i (uart_sys_rx),
     .uart_tx_o (uart_sys_tx),
-
+    .uart2_rx_i (uart2_sys_rx), // Or tie to a dummy/test signal
+    .uart2_tx_o (uart2_sys_tx),// Open/unconnected if unused
     // JTAG
     .trst_ni (1'b1),
     .tms_i   (1'b0),
@@ -155,11 +163,15 @@ module top_verilator (
     .spi_sck_o (),
 
     // XIP SPI flash
-    .xip_spi_sck_o  (),
+   /* .xip_spi_sck_o  (),
     .xip_spi_csn_o  (),
     .xip_spi_mosi_o (),
     .xip_spi_miso_i (1'b0),
-
+*/
+    .xip_spi_sck_o  (flash_sck),
+    .xip_spi_csn_o  (flash_csn),
+    .xip_spi_mosi_o (flash_mosi),
+    .xip_spi_miso_i (flash_miso),
     // I2C
     .i2c_scl_i    (scl_i),
     .i2c_scl_o    (scl_o),
@@ -210,5 +222,14 @@ module top_verilator (
     .tx_o   (uart_sys_rx),
     .rx_i   (uart_sys_tx)
   );
-
+uartdpi #(
+    .BAUD(BaudRate),
+    .FREQ(ClockFrequency)
+) u_uartdpi2 (
+    .clk_i,
+    .rst_ni,
+    .active (1'b1),
+    .tx_o   (uart2_sys_rx),
+    .rx_i   (uart2_sys_tx)
+);
 endmodule
